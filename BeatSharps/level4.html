@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Level 4</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body {
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+    }
+    body {
+      background: url('bg4.jpg') no-repeat center center fixed;
+      background-size: cover;
+    }
+    canvas {
+      display: block;
+    }
+    #info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 20px;
+      color: white;
+      font-family: monospace;
+      z-index: 10;
+    }
+    #progressContainer {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 200px;
+      height: 20px;
+      background: #444;
+      border: 1px solid white;
+      z-index: 10;
+    }
+    #progressBar {
+      height: 100%;
+      background: lime;
+      width: 0%;
+    }
+    #exitButton {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      padding: 5px 10px;
+      font-size: 12px;
+      color: white;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid white;
+      border-radius: 5px;
+      cursor: pointer;
+      z-index: 10;
+    }
+    #exitButton:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    #joystick {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 100px;
+      height: 100px;
+      background: rgba(255,255,255,0.05);
+      border: 2px solid white;
+      border-radius: 50%;
+      z-index: 10;
+      touch-action: none;
+    }
+    #stick {
+      width: 40px;
+      height: 40px;
+      background: cyan;
+      border-radius: 50%;
+      position: absolute;
+      top: 30px;
+      left: 30px;
+      transform: translate(0, 0);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      #joystick {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="info">Жизни: 3</div>
+  <div id="progressContainer"><div id="progressBar"></div></div>
+  <div id="exitButton" onclick="location.href='index.html'">Выйти из уровня</div>
+  <div id="joystick"><div id="stick"></div></div>
+  <canvas id="game"></canvas>
+  <audio id="music" src="undertale_024. Bonetrousle.mp3"></audio>
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+
+    const player = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      size: 30,
+      speed: 3.2,
+      lives: 3,
+      invincible: false,
+      lastHit: 0,
+      invincibleTime: 1000
+    };
+
+    const info = document.getElementById('info');
+    const progressBar = document.getElementById('progressBar');
+    const music = document.getElementById('music');
+    const keys = {};
+    const bullets = [];
+    let level = [];
+    let startTime = 0;
+    const DURATION = 57;
+
+    // Джойстик
+    let joystickX = 0, joystickY = 0;
+    const joystick = document.getElementById('joystick');
+    const stick = document.getElementById('stick');
+    let dragging = false;
+    let joyStart = { x: 0, y: 0 };
+
+    joystick.addEventListener('touchstart', e => {
+      dragging = true;
+      const touch = e.touches[0];
+      joyStart = { x: touch.clientX, y: touch.clientY };
+    });
+
+    joystick.addEventListener('touchmove', e => {
+      if (!dragging) return;
+      const touch = e.touches[0];
+      const dx = touch.clientX - joyStart.x;
+      const dy = touch.clientY - joyStart.y;
+      const dist = Math.min(Math.hypot(dx, dy), 40);
+      const angle = Math.atan2(dy, dx);
+      const x = Math.cos(angle) * dist;
+      const y = Math.sin(angle) * dist;
+      stick.style.transform = `translate(${x}px, ${y}px)`;
+      joystickX = x / 40;
+      joystickY = y / 40;
+    });
+
+    joystick.addEventListener('touchend', () => {
+      dragging = false;
+      stick.style.transform = `translate(0, 0)`;
+      joystickX = joystickY = 0;
+    });
+
+    function saveProgress(percent, win = false) {
+      const levelKey = 'level4';
+      const old = JSON.parse(localStorage.getItem(levelKey)) || { stars: 0, percent: 0 };
+      const stars = win ? 3 : percent >= 75 ? 2 : percent >= 40 ? 1 : 0;
+      const newPercent = Math.max(old.percent, percent);
+      const newStars = Math.max(old.stars, stars);
+      localStorage.setItem(levelKey, JSON.stringify({ percent: newPercent, stars: newStars }));
+    }
+
+    window.addEventListener('keydown', e => keys[e.key] = true);
+    window.addEventListener('keyup', e => keys[e.key] = false);
+
+    function update() {
+      const dx = ((keys['d'] || keys['ArrowRight']) ? 1 : 0) - ((keys['a'] || keys['ArrowLeft']) ? 1 : 0) + joystickX;
+      const dy = ((keys['s'] || keys['ArrowDown']) ? 1 : 0) - ((keys['w'] || keys['ArrowUp']) ? 1 : 0) + joystickY;
+
+      player.x += dx * player.speed;
+      player.y += dy * player.speed;
+
+      player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
+      player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+
+      bullets.forEach(b => {
+        b.x += b.dx;
+        b.y += b.dy;
+
+        const dist = Math.hypot(player.x + 15 - b.x, player.y + 15 - b.y);
+        if (dist < b.r + 15 && !player.invincible) {
+          if (!b.blue || (b.blue && (dx !== 0 || dy !== 0))) {
+            player.lives--;
+            player.invincible = true;
+            player.lastHit = Date.now();
+            updateHP();
+            if (player.lives <= 0) {
+              const percent = Math.floor((Date.now() - startTime) / 1000 / DURATION * 100);
+              saveProgress(percent, false);
+              alert('💀 Ты проиграл на ' + percent + '%');
+              location.reload();
+            }
+          }
+        }
+      });
+
+      if (player.invincible && Date.now() - player.lastHit > player.invincibleTime) {
+        player.invincible = false;
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (!player.invincible || Math.floor(Date.now() / 100) % 2 === 0) {
+        ctx.fillStyle = 'cyan';
+        ctx.fillRect(player.x, player.y, player.size, player.size);
+      }
+      for (let b of bullets) {
+        ctx.fillStyle = b.blue ? 'blue' : 'magenta';
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function updateHP() {
+      info.textContent = 'Жизни: ' + player.lives;
+    }
+
+    function updateProgress(t) {
+      progressBar.style.width = Math.min(100, (t / DURATION) * 100) + '%';
+    }
+
+    function spawn(type) {
+      if (type === 'blue') {
+        const x = Math.random() * canvas.width;
+        bullets.push({ x, y: -10, dx: 0, dy: 2.2, r: 12, blue: true });
+      } else if (type === 'rainSide') {
+        for (let i = 0; i < canvas.height; i += 50) {
+          bullets.push({ x: canvas.width + 10, y: i, dx: -3, dy: 0, r: 8 });
+        }
+      } else {
+        for (let i = 0; i < 8; i++) {
+          const angle = (Math.PI * 2) * (i / 8);
+          bullets.push({
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            dx: Math.cos(angle) * 2.5,
+            dy: Math.sin(angle) * 2.5,
+            r: 8
+          });
+        }
+      }
+    }
+
+    function gameLoop() {
+      const t = (Date.now() - startTime) / 1000;
+      level.forEach(e => {
+        if (!e.triggered && t >= e.time) {
+          spawn(e.type);
+          e.triggered = true;
+        }
+      });
+      update();
+      draw();
+      updateProgress(t);
+      if (t < DURATION) {
+        requestAnimationFrame(gameLoop);
+      } else {
+        saveProgress(100, true);
+        alert('🎉 Уровень пройден!');
+        location.href = 'index.html';
+      }
+    }
+
+    function startLevel() {
+      music.play().catch(() => {});
+      startTime = Date.now();
+      gameLoop();
+    }
+
+    const types = ['blue', 'normal', 'rainSide'];
+    for (let i = 2; i < DURATION; i += 1.5) {
+      const type = types[Math.floor(Math.random() * types.length)];
+      level.push({ time: i, type });
+    }
+
+    window.addEventListener('keydown', startLevel, { once: true });
+    window.addEventListener('mousedown', startLevel, { once: true });
+    window.addEventListener('touchstart', startLevel, { once: true });
+  </script>
+</body>
+</html>

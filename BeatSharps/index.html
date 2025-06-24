@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Выбор уровня</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #000;
+      color: white;
+      font-family: monospace;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .level {
+      margin: 20px auto;
+      padding: 15px;
+      background: #111;
+      border: 1px solid #555;
+      border-radius: 10px;
+      max-width: 400px;
+      text-align: center;
+    }
+    .level a {
+      font-size: 18px;
+      color: #0ff;
+      text-decoration: none;
+    }
+    .level a:hover {
+      text-decoration: underline;
+    }
+    .progress {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #ccc;
+    }
+  </style>
+</head>
+<body>
+  <h1>Выбор уровня</h1>
+
+  <div class="level">
+    <a href="level1.html">Level 1: MEGALOVINA</a>
+    <div class="progress" id="level1Progress">Нет прогресса</div>
+  </div>
+
+  <div class="level">
+    <a href="level2.html">Level 2: Battle against true hero</a>
+    <div class="progress" id="level2Progress">Нет прогресса</div>
+  </div>
+
+  <div class="level">
+    <a href="level3.html">Level 3: Spider Dance</a>
+    <div class="progress" id="level3Progress">Нет прогресса</div>
+  </div>
+
+  <div class="level">
+    <a href="level4.html">Level 4: Bonetrousle</a>
+    <div class="progress" id="level4Progress">Нет прогресса</div>
+  </div>
+
+  <div class="level">
+    <a href="level5.html">Level 5:Bonetrousle /a>
+    <div class="progress" id="level5Progress">Нет прогресса</div>
+  </div>
+
+  <div class="level">
+    <a href="level6.html">Level 6:Metal Crusher </a>
+    <div class="progress" id="level5Progress">Нет прогресса</div>
+  </div>
+
+  <script>
+    function showProgress(levelKey, elementId) {
+      const data = JSON.parse(localStorage.getItem(levelKey));
+      if (!data) return;
+      const el = document.getElementById(elementId);
+      if (el) {
+        el.innerHTML = `Прогресс: ${data.percent}%<br>` + '⭐️'.repeat(data.stars);
+      }
+    }
+
+    showProgress('level1', 'level1Progress');
+    showProgress('level2', 'level2Progress');
+    showProgress('level3', 'level3Progress');
+    showProgress('level4', 'level4Progress');
+    showProgress('level5', 'level5Progress');
+    showProgress('level6', 'level6Progress');
+  </script>
+</body>
+</html>

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Level 1 - Megalovania</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body {
+      margin: 0;
+      overflow: hidden;
+      background: black;
+    }
+    #hpBar {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      font-family: monospace;
+      z-index: 10;
+    }
+    #progressContainer {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 200px;
+      height: 20px;
+      background: #444;
+      border: 1px solid white;
+      z-index: 10;
+    }
+    #progressBar {
+      height: 100%;
+      background: lime;
+      width: 0%;
+    }
+    #victory {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 36px;
+      z-index: 100;
+    }
+    #joystick {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 100px;
+      height: 100px;
+      background: rgba(255,255,255,0.05);
+      border: 2px solid white;
+      border-radius: 50%;
+      z-index: 10;
+      touch-action: none;
+    }
+    #stick {
+      width: 40px;
+      height: 40px;
+      background: cyan;
+      border-radius: 50%;
+      position: absolute;
+      top: 30px;
+      left: 30px;
+      transform: translate(0, 0);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      #joystick {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="hpBar">Жизни: 3</div>
+  <div id="progressContainer"><div id="progressBar"></div></div>
+  <div id="victory">🎉 Победа!</div>
+  <canvas id="game"></canvas>
+  <div id="joystick"><div id="stick"></div></div>
+  <audio id="music" src="MEGALOVINA.mp3"></audio>
+  <script>
+    function saveProgress(percent, win = false) {
+      const levelKey = 'level1';
+      const old = JSON.parse(localStorage.getItem(levelKey)) || { stars: 0, percent: 0 };
+      const stars = win ? 3 : percent >= 75 ? 2 : percent >= 40 ? 1 : 0;
+      const newPercent = Math.max(old.percent, percent);
+      const newStars = Math.max(old.stars, stars);
+      localStorage.setItem(levelKey, JSON.stringify({ percent: newPercent, stars: newStars }));
+    }
+
+    function getPercent(currentTime) {
+      return Math.min(100, Math.floor((currentTime / 120) * 100));
+    }
+
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+
+    const hpBar = document.getElementById('hpBar');
+    const progressBar = document.getElementById('progressBar');
+    const victoryText = document.getElementById('victory');
+    const music = document.getElementById('music');
+
+    const player = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      size: 30,
+      speed: 4,
+      lives: 3,
+      invincible: false,
+      lastHit: 0,
+      invincibleTime: 1000
+    };
+
+    const bullets = [];
+    const keys = {};
+    let startTime = 0;
+    let flash = 0;
+
+    let joystickX = 0, joystickY = 0;
+    const joystick = document.getElementById('joystick');
+    const stick = document.getElementById('stick');
+    let dragging = false;
+    let joyStart = { x: 0, y: 0 };
+
+    joystick.addEventListener('touchstart', e => {
+      dragging = true;
+      const touch = e.touches[0];
+      joyStart = { x: touch.clientX, y: touch.clientY };
+    });
+
+    joystick.addEventListener('touchmove', e => {
+      if (!dragging) return;
+      const touch = e.touches[0];
+      const dx = touch.clientX - joyStart.x;
+      const dy = touch.clientY - joyStart.y;
+      const dist = Math.min(Math.hypot(dx, dy), 40);
+      const angle = Math.atan2(dy, dx);
+      const x = Math.cos(angle) * dist;
+      const y = Math.sin(angle) * dist;
+      stick.style.transform = `translate(${x}px, ${y}px)`;
+      joystickX = x / 40;
+      joystickY = y / 40;
+    });
+
+    joystick.addEventListener('touchend', () => {
+      dragging = false;
+      stick.style.transform = `translate(0, 0)`;
+      joystickX = joystickY = 0;
+    });
+
+    const attackTypes = ['circle', 'wave', 'burst'];
+    const level = [];
+    for (let t = 1; t < 120; t += 3 + Math.random() * 3) {
+      const type = attackTypes[Math.floor(Math.random() * attackTypes.length)];
+      level.push({ time: t, type });
+    }
+
+    window.addEventListener('keydown', e => keys[e.key] = true);
+    window.addEventListener('keyup', e => keys[e.key] = false);
+
+    function spawn(type) {
+      if (type === 'circle') {
+        for (let i = 0; i < 10; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 2 + Math.random();
+          const dx = -Math.cos(angle) * speed;
+          const dy = -Math.sin(angle) * speed;
+          const x = canvas.width / 2 + Math.cos(angle) * 500;
+          const y = canvas.height / 2 + Math.sin(angle) * 500;
+          bullets.push({ x, y, dx, dy, r: 10 });
+        }
+      } else if (type === 'wave') {
+        const offset = Math.random() * 20;
+        for (let i = 0; i < canvas.width; i += 60) {
+          bullets.push({ x: i + offset, y: 0, dx: 0, dy: 2, r: 8 });
+        }
+      } else if (type === 'burst') {
+        for (let i = 0; i < 12; i++) {
+          const angle = (Math.PI * 2) * (i / 12);
+          const speed = 2.5;
+          bullets.push({
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            dx: Math.cos(angle) * speed,
+            dy: Math.sin(angle) * speed,
+            r: 9
+          });
+        }
+        flash = 0.2;
+      }
+    }
+
+    function update() {
+      const moveX = ((keys['ArrowRight'] || keys['d']) ? 1 : 0) - ((keys['ArrowLeft'] || keys['a']) ? 1 : 0) + joystickX;
+      const moveY = ((keys['ArrowDown'] || keys['s']) ? 1 : 0) - ((keys['ArrowUp'] || keys['w']) ? 1 : 0) + joystickY;
+      player.x += moveX * player.speed;
+      player.y += moveY * player.speed;
+      player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
+      player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+
+      bullets.forEach(b => {
+        b.x += b.dx;
+        b.y += b.dy;
+      });
+
+      bullets.forEach(b => {
+        const dx = player.x + player.size / 2 - b.x;
+        const dy = player.y + player.size / 2 - b.y;
+        if (Math.hypot(dx, dy) < b.r + player.size / 2) {
+          if (!player.invincible) {
+            player.lives--;
+            player.invincible = true;
+            player.lastHit = Date.now();
+            hpBar.innerText = 'Жизни: ' + player.lives;
+          }
+        }
+      });
+
+      if (player.invincible && Date.now() - player.lastHit > player.invincibleTime) {
+        player.invincible = false;
+      }
+    }
+
+    function updateProgress(t) {
+      progressBar.style.width = getPercent(t) + '%';
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (flash > 0) {
+        ctx.fillStyle = `rgba(255,255,255,${flash})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        flash -= 0.02;
+      }
+
+      if (!player.invincible || Math.floor(Date.now() / 100) % 2 === 0) {
+        ctx.fillStyle = 'blue';
+        ctx.fillRect(player.x, player.y, player.size, player.size);
+      }
+
+      for (let b of bullets) {
+        ctx.fillStyle = '#f0f';
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function gameLoop() {
+      const time = (Date.now() - startTime) / 1000;
+
+      level.forEach(obj => {
+        if (!obj.triggered && time >= obj.time) {
+          spawn(obj.type);
+          obj.triggered = true;
+        }
+      });
+
+      update();
+      updateProgress(time);
+      draw();
+
+      if (player.lives <= 0) {
+        const percent = getPercent(time);
+        saveProgress(percent, false);
+        alert('💀 Ты проиграл на ' + percent + '%');
+        location.reload();
+        return;
+      }
+
+      if (time >= 120) {
+        saveProgress(100, true);
+        victoryText.style.display = 'block';
+        music.pause();
+        return;
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    function tryStart() {
+      if (music.paused) {
+        music.play().catch(() => {});
+        startTime = Date.now();
+        gameLoop();
+        window.removeEventListener('keydown', tryStart);
+        window.removeEventListener('mousedown', tryStart);
+        window.removeEventListener('touchstart', tryStart);
+      }
+    }
+
+    window.addEventListener('keydown', tryStart);
+    window.addEventListener('mousedown', tryStart);
+    window.addEventListener('touchstart', tryStart);
+  </script>
+</body>
+</html>
