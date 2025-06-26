@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>🏆 Достижения</title>
+  <style>
+    body {
+      background: #000;
+      color: #0f0;
+      font-family: monospace;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    .nav {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .nav a {
+      color: #0ff;
+      margin: 0 10px;
+      text-decoration: none;
+    }
+    .nav a:hover {
+      text-decoration: underline;
+    }
+    .achievement {
+      margin: 15px auto;
+      padding: 10px;
+      max-width: 400px;
+      border-radius: 10px;
+      border: 1px solid #0f0;
+      background: #020;
+      transition: 0.3s;
+    }
+    .achievement.locked {
+      color: #444;
+      background: #111;
+      border-color: #333;
+    }
+    .achievement.unlocked {
+      border-color: lime;
+      background: #030;
+      box-shadow: 0 0 10px lime;
+    }
+    .icon {
+      margin-right: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <a href="index.html">🎮 Уровни</a>
+    <a href="achievements.html">🏆 Достижения</a>
+    <a href="records.html">📈 Рекорды</a>
+  </div>
+
+  <h1>🏆 Достижения</h1>
+  <div id="achievementsContainer"></div>
+
+  <script>
+    const container = document.getElementById("achievementsContainer");
+
+    // Собираем данные по всем уровням
+    let passedLevels = 0;
+    let nightmarePassed = 0;
+    const levelData = [];
+
+    for (let i = 1; i <= 10; i++) {
+      const data = JSON.parse(localStorage.getItem(`level${i}`));
+      if (data && data.percent >= 100) {
+        passedLevels++;
+        if (i === 10) nightmarePassed++; // Level 10 считается кошмаром
+      }
+    }
+
+    // Шаблон достижений
+    const achievements = [
+      {
+        icon: "👣",
+        title: "Первые шаги",
+        desc: "Пройти первый уровень",
+        unlocked: JSON.parse(localStorage.getItem("level1"))?.percent >= 100
+      },
+      {
+        icon: "📊",
+        title: "Средничек",
+        desc: "Пройти 3 любых уровня",
+        unlocked: passedLevels >= 3
+      },
+      {
+        icon: "💀",
+        title: "Мастер",
+        desc: "Пройти один уровень сложности Nightmare",
+        unlocked: nightmarePassed >= 1
+      },
+      {
+        icon: "🎮",
+        title: "Киберспортсмен",
+        desc: "Пройти все уровни сложности Nightmare",
+        unlocked: nightmarePassed >= 1 && JSON.parse(localStorage.getItem("level10"))?.percent >= 100
+      }
+    ];
+
+    achievements.forEach(ach => {
+      const div = document.createElement("div");
+      div.className = `achievement ${ach.unlocked ? "unlocked" : "locked"}`;
+      div.innerHTML = `<b class="icon">${ach.icon}</b> <b>${ach.title}</b><br><small>${ach.desc}</small>`;
+      container.appendChild(div);
+    });
+  </script>
+</body>
+</html>

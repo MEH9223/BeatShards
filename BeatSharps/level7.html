@@ -2,17 +2,20 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Level 6</title>
+  <title>Level 7: Photoshop Flowey</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     html, body {
       margin: 0;
       overflow: hidden;
-      background: #111;
+      background: #000;
+      color: #fff;
+      font-family: monospace;
     }
     body {
-      background: url('bg6.jpg') no-repeat center center fixed;
+      background: url('bg7.jpg') no-repeat center center fixed;
       background-size: cover;
+      transition: background-color 0.1s;
     }
     canvas {
       display: block;
@@ -25,20 +28,18 @@
       top: 10px;
       left: 10px;
       font-size: 20px;
-      color: white;
-      font-family: monospace;
     }
     #progressContainer {
       top: 10px;
       right: 10px;
       width: 200px;
       height: 20px;
-      background: #444;
-      border: 1px solid white;
+      background: #222;
+      border: 1px solid #555;
     }
     #progressBar {
       height: 100%;
-      background: lime;
+      background: #f00;
       width: 0%;
     }
     #exitButton {
@@ -46,14 +47,13 @@
       right: 10px;
       padding: 5px 10px;
       font-size: 12px;
-      color: white;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid white;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid #fff;
       border-radius: 5px;
       cursor: pointer;
     }
     #exitButton:hover {
-      background: rgba(255, 255, 255, 0.2);
+      background: rgba(255,255,255,0.2);
     }
     #joystick {
       bottom: 20px;
@@ -61,34 +61,37 @@
       width: 100px;
       height: 100px;
       background: rgba(255,255,255,0.05);
-      border: 2px solid white;
+      border: 2px solid #fff;
       border-radius: 50%;
       touch-action: none;
     }
     #stick {
       width: 40px;
       height: 40px;
-      background: lime;
+      background: #f00;
       border-radius: 50%;
       position: absolute;
       top: 30px;
       left: 30px;
-      transform: translate(0, 0);
+      transform: translate(0,0);
     }
     @media (hover: hover) and (pointer: fine) {
-      #joystick {
-        display: none;
-      }
+      #joystick { display: none; }
     }
   </style>
 </head>
 <body>
   <div id="info">Жизни: 3</div>
-  <div id="progressContainer"><div id="progressBar"></div></div>
+  <div id="progressContainer">
+    <div id="progressBar"></div>
+  </div>
   <div id="exitButton" onclick="location.href='index.html'">Выйти</div>
   <canvas id="game"></canvas>
-  <div id="joystick"><div id="stick"></div></div>
-  <audio id="music" src="undertale_050. Metal Crusher.mp3" preload="auto"></audio>
+  <div id="joystick">
+    <div id="stick"></div>
+  </div>
+  <audio id="music" src="undertale_079. Your Best Nightmare.mp3" preload="auto"></audio>
+
   <script>
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
@@ -98,32 +101,42 @@
     const info = document.getElementById('info');
     const progressBar = document.getElementById('progressBar');
     const music = document.getElementById('music');
+    const body = document.body;
 
     const player = {
       x: canvas.width / 2,
       y: canvas.height / 2,
       size: 30,
-      speed: 3.2,
+      speed: 3.5,
       lives: 3,
       invincible: false,
       lastHit: 0,
       invincibleTime: 1000
     };
 
-    const keys = {}, bullets = [], lasers = [], warnings = [];
-    let level = [], startTime = 0;
-    const DURATION = 63;
+    const keys = {};
+    const bullets = [];
+    const lasers = [];
+    const warnings = [];
+    let level = [];
+    let startTime = 0;
+    const DURATION = 240;
 
     let joystickX = 0, joystickY = 0;
     const joystick = document.getElementById('joystick');
     const stick = document.getElementById('stick');
-    let dragging = false, joyStart = { x: 0, y: 0 };
+    let dragging = false;
+    let joyStart = { x: 0, y: 0 };
+
+    let harderMode = false;
+    let lastFlash = 0;
 
     joystick.addEventListener('touchstart', e => {
       dragging = true;
       const touch = e.touches[0];
       joyStart = { x: touch.clientX, y: touch.clientY };
     });
+
     joystick.addEventListener('touchmove', e => {
       if (!dragging) return;
       const touch = e.touches[0];
@@ -137,6 +150,7 @@
       joystickX = x / 40;
       joystickY = y / 40;
     });
+
     joystick.addEventListener('touchend', () => {
       dragging = false;
       stick.style.transform = `translate(0, 0)`;
@@ -146,13 +160,6 @@
     window.addEventListener('keydown', e => keys[e.key] = true);
     window.addEventListener('keyup', e => keys[e.key] = false);
 
-    function angleDiff(a, b) {
-      let d = a - b;
-      while (d > Math.PI) d -= 2 * Math.PI;
-      while (d < -Math.PI) d += 2 * Math.PI;
-      return Math.abs(d);
-    }
-
     function update() {
       const dx = ((keys['d'] || keys['ArrowRight']) ? 1 : 0) - ((keys['a'] || keys['ArrowLeft']) ? 1 : 0) + joystickX;
       const dy = ((keys['s'] || keys['ArrowDown']) ? 1 : 0) - ((keys['w'] || keys['ArrowUp']) ? 1 : 0) + joystickY;
@@ -161,25 +168,31 @@
       player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
       player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
 
-      bullets.forEach(b => {
-        b.x += b.dx;
-        b.y += b.dy;
-      });
+      bullets.forEach(b => { b.x += b.dx; b.y += b.dy; });
 
       lasers.forEach(l => {
-        l.angle += 0.01;
+        l.angle += 0.015;
+        if (Date.now() - l.spawnTime > 4000) lasers.splice(lasers.indexOf(l), 1);
       });
 
       bullets.forEach(b => {
         const dist = Math.hypot(player.x + 15 - b.x, player.y + 15 - b.y);
-        if (dist < b.r + 15 && !player.invincible) hit();
+        if (dist < b.r + 15 && !player.invincible) {
+          player.lives--;
+          player.invincible = true;
+          player.lastHit = Date.now();
+          updateHP();
+        }
       });
 
       lasers.forEach(l => {
         const angleToPlayer = Math.atan2(player.y - l.y, player.x - l.x);
-        const diff = angleDiff(angleToPlayer, l.angle);
-        if (diff < 0.1 && Math.hypot(player.x - l.x, player.y - l.y) < l.length && !player.invincible) {
-          hit();
+        const diff = Math.abs((l.angle % (Math.PI * 2)) - angleToPlayer);
+        if (diff < 0.2 && Math.hypot(player.x - l.x, player.y - l.y) < l.length && !player.invincible) {
+          player.lives--;
+          player.invincible = true;
+          player.lastHit = Date.now();
+          updateHP();
         }
       });
 
@@ -187,16 +200,10 @@
         player.invincible = false;
       }
 
-      warnings.forEach((w, i) => {
-        if (Date.now() - w.start > 1500) warnings.splice(i, 1);
-      });
-    }
-
-    function hit() {
-      player.lives--;
-      player.invincible = true;
-      player.lastHit = Date.now();
-      updateHP();
+      const now = Date.now();
+      for (let i = warnings.length - 1; i >= 0; i--) {
+        if (now - warnings[i].start > 1500) warnings.splice(i, 1);
+      }
     }
 
     function draw() {
@@ -209,24 +216,27 @@
         ctx.lineTo(w.x2, w.y2);
         ctx.stroke();
       }
+
       if (!player.invincible || Math.floor(Date.now() / 100) % 2 === 0) {
-        ctx.fillStyle = 'lime';
+        ctx.fillStyle = '#0ff';
         ctx.fillRect(player.x, player.y, player.size, player.size);
       }
-      bullets.forEach(b => {
-        ctx.fillStyle = 'orange';
+
+      for (let b of bullets) {
+        ctx.fillStyle = 'lime';
         ctx.beginPath();
         ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
         ctx.fill();
-      });
-      lasers.forEach(l => {
+      }
+
+      for (let l of lasers) {
         ctx.strokeStyle = 'red';
         ctx.lineWidth = 6;
         ctx.beginPath();
         ctx.moveTo(l.x, l.y);
         ctx.lineTo(l.x + Math.cos(l.angle) * l.length, l.y + Math.sin(l.angle) * l.length);
         ctx.stroke();
-      });
+      }
     }
 
     function updateHP() {
@@ -238,58 +248,62 @@
     }
 
     function saveProgress(percent, win = false) {
-      const levelKey = 'level6';
+      const levelKey = 'level7';
       const old = JSON.parse(localStorage.getItem(levelKey)) || { stars: 0, percent: 0 };
-      const stars = win ? 3 : percent >= 75 ? 2 : percent >= 40 ? 1 : 0;
+      const stars = win ? 5 : percent >= 75 ? 4 : percent >= 50 ? 3 : percent >= 25 ? 2 : 1;
       const newPercent = Math.max(old.percent, percent);
       const newStars = Math.max(old.stars, stars);
       localStorage.setItem(levelKey, JSON.stringify({ percent: newPercent, stars: newStars }));
     }
 
     function spawn(type) {
-      const cx = canvas.width / 2, cy = canvas.height / 2;
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      let bulletSpeed = harderMode ? 4.5 : 2.5;
+      let burstCount = harderMode ? 20 : 10;
       if (type === 'laser') {
         const angle = Math.random() * Math.PI * 2;
-        const length = Math.min(canvas.width, canvas.height) * 1.2;
-        const x2 = cx + Math.cos(angle) * length;
-        const y2 = cy + Math.sin(angle) * length;
-        warnings.push({ x1: cx, y1: cy, x2, y2, start: Date.now() });
+        const length = Math.min(canvas.width, canvas.height);
+        warnings.push({ x1: cx, y1: cy, x2: cx + Math.cos(angle) * length, y2: cy + Math.sin(angle) * length, start: Date.now() });
         setTimeout(() => {
           lasers.push({ x: cx, y: cy, angle, length, spawnTime: Date.now() });
         }, 1500);
-      } else if (type === 'bomb') {
-        for (let i = 0; i < 4; i++) {
-          const angle = i * Math.PI / 2;
-          bullets.push({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height,
-            dx: Math.cos(angle) * 0.8,
-            dy: Math.sin(angle) * 0.8,
-            r: 12
-          });
-        }
       } else if (type === 'ring') {
-        for (let i = 0; i < 20; i++) {
-          const angle = (Math.PI * 2) * (i / 20);
-          bullets.push({
-            x: cx,
-            y: cy,
-            dx: Math.cos(angle) * 1.1,
-            dy: Math.sin(angle) * 1.1,
-            r: 6
-          });
+        let rings = harderMode ? 72 : 36;
+        let gaps = 6;
+        for (let i = 0; i < rings; i++) {
+          if (i % Math.floor(rings / gaps) === 0) continue;
+          const angle = (Math.PI * 2) * (i / rings);
+          bullets.push({ x: cx, y: cy, dx: Math.cos(angle) * bulletSpeed, dy: Math.sin(angle) * bulletSpeed, r: 7 });
+        }
+      } else if (type === 'burst') {
+        for (let i = 0; i < burstCount; i++) {
+          const x = Math.random() * canvas.width;
+          const y = -10;
+          bullets.push({ x, y, dx: 0, dy: 3 + Math.random() * 2, r: 12 });
         }
       }
     }
 
     function gameLoop() {
       const t = (Date.now() - startTime) / 1000;
+
+      if (t > 22) {
+        harderMode = true;
+        if (Date.now() - lastFlash > 1000) {
+          body.style.backgroundColor = '#800';
+          setTimeout(() => body.style.backgroundColor = '', 200);
+          lastFlash = Date.now();
+        }
+      }
+
       level.forEach(e => {
         if (!e.triggered && t >= e.time) {
           spawn(e.type);
           e.triggered = true;
         }
       });
+
       update();
       draw();
       updateProgress(t);
@@ -297,7 +311,7 @@
       if (player.lives <= 0) {
         const percent = Math.floor((t / DURATION) * 100);
         saveProgress(percent, false);
-        alert('💀 Ты проиграл на ' + percent + '%');
+        alert('Ты проиграл на ' + percent + '%');
         location.reload();
         return;
       }
@@ -306,7 +320,7 @@
         requestAnimationFrame(gameLoop);
       } else {
         saveProgress(100, true);
-        alert('🎉 Уровень пройден!');
+        alert('Уровень пройден!');
         location.href = 'index.html';
       }
     }
@@ -317,8 +331,8 @@
       gameLoop();
     }
 
-    for (let i = 2; i < DURATION; i += 2) {
-      const types = ['laser', 'ring', 'bomb'];
+    for (let i = 3; i < DURATION; i += 2.2) {
+      const types = ['laser', 'ring', 'burst'];
       level.push({ time: i, type: types[Math.floor(Math.random() * types.length)] });
     }
 

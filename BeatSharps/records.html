@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>📈 Таблица рекордов</title>
+  <style>
+    body {
+      background: #000;
+      color: #0f0;
+      font-family: monospace;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    .record {
+      margin: 10px auto;
+      padding: 10px;
+      border: 1px solid #0f0;
+      max-width: 400px;
+      border-radius: 10px;
+      background: #020;
+    }
+    .nav {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .nav a {
+      color: #0ff;
+      margin: 0 10px;
+      text-decoration: none;
+    }
+    .nav a:hover {
+      text-decoration: underline;
+    }
+    .empty {
+      text-align: center;
+      color: gray;
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <a href="index.html">🎮 Уровни</a>
+    <a href="achievements.html">🏆 Достижения</a>
+    <a href="records.html">📈 Рекорды</a>
+  </div>
+
+  <h1>📈 Таблица рекордов</h1>
+  <div id="recordsContainer"></div>
+
+  <script>
+    const recordsContainer = document.getElementById("recordsContainer");
+    let hasAny = false;
+
+    for (let i = 1; i <= 10; i++) {
+      const data = JSON.parse(localStorage.getItem(`level${i}`));
+      if (data) {
+        hasAny = true;
+        const div = document.createElement("div");
+        div.className = "record";
+        const stars = "⭐️".repeat(data.stars || 0);
+        div.innerHTML = `<b>Level ${i}</b><br>📊 ${data.percent || 0}%<br>${stars}`;
+        recordsContainer.appendChild(div);
+      }
+    }
+
+    if (!hasAny) {
+      recordsContainer.innerHTML = `<p class="empty">Нет данных. Пройди хотя бы один уровень!</p>`;
+    }
+  </script>
+</body>
+</html>

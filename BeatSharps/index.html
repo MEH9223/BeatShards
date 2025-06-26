@@ -12,10 +12,25 @@
       color: white;
       font-family: monospace;
     }
+
+    .nav {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .nav a {
+      color: #0ff;
+      margin: 0 10px;
+      text-decoration: none;
+    }
+    .nav a:hover {
+      text-decoration: underline;
+    }
+
     h1 {
       text-align: center;
       margin-bottom: 30px;
     }
+
     .level {
       margin: 20px auto;
       padding: 15px;
@@ -24,71 +39,233 @@
       border-radius: 10px;
       max-width: 400px;
       text-align: center;
+      transition: 0.3s;
     }
+
     .level a {
       font-size: 18px;
       color: #0ff;
       text-decoration: none;
     }
+
     .level a:hover {
       text-decoration: underline;
     }
+
     .progress {
       margin-top: 10px;
       font-size: 14px;
       color: #ccc;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .progress.shown {
+      opacity: 1;
+    }
+
+    .level.completed {
+      border-color: lime;
+      background: #020;
+    }
+
+    .medium {
+      background: #333300;
+      border-color: yellow;
+    }
+
+    .hard {
+      background: #330000;
+      border-color: red;
+    }
+
+    .veryhard {
+      background: #220000;
+      border: 2px solid darkred;
+    }
+
+    .nightmare {
+      background: #200;
+      border: 3px solid red;
+      animation: blink 0.8s infinite alternate;
+    }
+
+    @keyframes blink {
+      from { box-shadow: 0 0 10px red; }
+      to   { box-shadow: 0 0 30px red; }
+    }
+
+    .warning {
+      background-color: #290101;
+      color: red;
+      font-weight: bold;
+      font-size: 20px;
+      text-shadow: 0 0 5px red, 0 0 10px red;
+      animation: flicker 0.3s infinite alternate;
+    }
+
+    @keyframes flicker {
+      from { opacity: 1; }
+      to { opacity: 0.6; }
+    }
+
+    .locked {
+      opacity: 0.5;
+      background: #111;
+      border: 1px dashed gray;
+      cursor: not-allowed;
+      position: relative;
+    }
+
+    .locked a {
+      color: gray;
+      pointer-events: none;
+    }
+
+    .locked:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 0, 0, 0.8);
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .unlocked {
+      opacity: 1;
+      cursor: pointer;
+    }
+
+    button {
+      display: block;
+      margin: 40px auto;
+      padding: 10px 20px;
+      font-family: monospace;
+      background: #222;
+      color: #fff;
+      border: 1px solid #555;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #333;
     }
   </style>
 </head>
 <body>
+
+  <div class="nav">
+    <a href="index.html">🎮 Уровни</a>
+    <a href="achivments.html">🏆 Достижения</a>
+    <a href="records.html">📈 Рекорды</a>
+  </div>
+
   <h1>Выбор уровня</h1>
 
-  <div class="level">
-    <a href="level1.html">Level 1: MEGALOVINA</a>
+  <!-- Уровни -->
+  <div class="level"><a href="level1.html">Level 1: MEGALOVINA</a>
     <div class="progress" id="level1Progress">Нет прогресса</div>
   </div>
-
-  <div class="level">
-    <a href="level2.html">Level 2: Battle against true hero</a>
+  <div class="level hard"><a href="level2.html">Level 2: Battle Against True Hero</a>
     <div class="progress" id="level2Progress">Нет прогресса</div>
   </div>
-
-  <div class="level">
-    <a href="level3.html">Level 3: Spider Dance</a>
+  <div class="level"><a href="level3.html">Level 3: Spider Dance</a>
     <div class="progress" id="level3Progress">Нет прогресса</div>
   </div>
-
-  <div class="level">
-    <a href="level4.html">Level 4: Bonetrousle</a>
+  <div class="level hard"><a href="level4.html">Level 4: Bonetrousle</a>
     <div class="progress" id="level4Progress">Нет прогресса</div>
   </div>
-
-  <div class="level">
-    <a href="level5.html">Level 5:Bonetrousle /a>
+  <div class="level medium"><a href="level5.html">Level 5: Ghost Fight</a>
     <div class="progress" id="level5Progress">Нет прогресса</div>
   </div>
-
-  <div class="level">
-    <a href="level6.html">Level 6:Metal Crusher </a>
-    <div class="progress" id="level5Progress">Нет прогресса</div>
+  <div class="level hard"><a href="level6.html">Level 6: Metal Crusher</a>
+    <div class="progress" id="level6Progress">Нет прогресса</div>
   </div>
+  <div class="level warning"><div class="warning"><a href="level7.html">⚠ Level 7: YOUR BEST NIGHTMARE ⚠</a></div>
+    <div class="progress" id="level7Progress">Нет прогресса</div>
+  </div>
+
+  <!-- Заблокированные -->
+  <div class="level locked" id="level8" data-tooltip="Пройди уровни 1 и 3, чтобы открыть">
+    <a href="level8.html" onclick="return false;">🔒 Level 8: Dummy!</a>
+    <div class="progress" id="level8Progress">Откроется после 1 и 3</div>
+  </div>
+  <div class="level locked" id="level9" data-tooltip="Пройди уровни 2 и 4, чтобы открыть">
+    <a href="level9.html" onclick="return false;">🔒 Level 9: Power Of NEO</a>
+    <div class="progress" id="level9Progress">Откроется после 2 и 4</div>
+  </div>
+  <div class="level locked" id="level10" data-tooltip="Пройди уровни 6 и 7, чтобы открыть">
+    <a href="level10.html" onclick="return false;">🔒 Level 10: Final Judgement</a>
+    <div class="progress" id="level10Progress">Откроется после 6 и 7</div>
+  </div>
+
+  <button onclick="resetProgress()">Сбросить прогресс</button>
+
+  <audio autoplay loop>
+    <source src="music.mp3" type="audio/mpeg">
+    Ваш браузер не поддерживает аудио.
+  </audio>
 
   <script>
     function showProgress(levelKey, elementId) {
       const data = JSON.parse(localStorage.getItem(levelKey));
-      if (!data) return;
       const el = document.getElementById(elementId);
-      if (el) {
-        el.innerHTML = `Прогресс: ${data.percent}%<br>` + '⭐️'.repeat(data.stars);
+      if (!data || !el) return;
+
+      let stars = '⭐️'.repeat(data.stars || 0);
+
+      if (elementId === "level10Progress" && data.percent >= 100) {
+        stars = '⭐️⭐️⭐️⭐️⭐️';
+      }
+
+      el.innerHTML = `Прогресс: ${data.percent}%<br>${stars}`;
+      el.classList.add('shown');
+
+      if (data.percent >= 100) {
+        el.parentElement.classList.add('completed');
       }
     }
 
-    showProgress('level1', 'level1Progress');
-    showProgress('level2', 'level2Progress');
-    showProgress('level3', 'level3Progress');
-    showProgress('level4', 'level4Progress');
-    showProgress('level5', 'level5Progress');
-    showProgress('level6', 'level6Progress');
+    function resetProgress() {
+      for (let i = 1; i <= 10; i++) {
+        localStorage.removeItem(`level${i}`);
+      }
+      location.reload();
+    }
+
+    for (let i = 1; i <= 10; i++) {
+      showProgress(`level${i}`, `level${i}Progress`);
+    }
+
+    function unlockLevels() {
+      const is1 = JSON.parse(localStorage.getItem("level1"))?.percent >= 100;
+      const is2 = JSON.parse(localStorage.getItem("level2"))?.percent >= 100;
+      const is3 = JSON.parse(localStorage.getItem("level3"))?.percent >= 100;
+      const is4 = JSON.parse(localStorage.getItem("level4"))?.percent >= 100;
+      const is6 = JSON.parse(localStorage.getItem("level6"))?.percent >= 100;
+      const is7 = JSON.parse(localStorage.getItem("level7"))?.percent >= 100;
+
+      if (is1 && is3) unlock(8, "hard");
+      if (is2 && is4) unlock(9, "veryhard");
+      if (is6 && is7) unlock(10, "nightmare");
+    }
+
+    function unlock(levelNum, className) {
+      const el = document.getElementById(`level${levelNum}`);
+      el.classList.add("unlocked", className);
+      el.classList.remove("locked");
+      const link = el.querySelector("a");
+      link.setAttribute("href", `level${levelNum}.html`);
+      link.removeAttribute("onclick");
+      showProgress(`level${levelNum}`, `level${levelNum}Progress`);
+    }
+
+    unlockLevels();
   </script>
 </body>
 </html>
