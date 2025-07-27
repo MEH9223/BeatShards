@@ -11,6 +11,7 @@
       background-size: cover;
     }
     canvas { display: block; }
+
     #info, #progressContainer, #exitButton {
       position: absolute;
       z-index: 10;
@@ -42,14 +43,39 @@
       cursor: pointer;
     }
     #exitButton:hover { background: rgba(255, 255, 255, 0.2); }
+
+    #joystick {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      width: 100px;
+      height: 100px;
+      background: rgba(255,255,255,0.05);
+      border: 2px solid white;
+      border-radius: 50%;
+      touch-action: none;
+      z-index: 10;
+      display: none; /* Скрыт по умолчанию */
+    }
+    #stick {
+      width: 40px;
+      height: 40px;
+      background: white;
+      border-radius: 50%;
+      position: absolute;
+      top: 30px;
+      left: 30px;
+    }
   </style>
 </head>
 <body>
   <div id="info">Жизни: 3</div>
   <div id="progressContainer"><div id="progressBar"></div></div>
   <div id="exitButton" onclick="location.href='index.html'">Выйти</div>
+  <div id="joystick"><div id="stick"></div></div>
   <canvas id="game"></canvas>
   <audio id="music" src="undertale_099. Power of 'NEO'.mp3" loop></audio>
+
   <script>
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
@@ -70,23 +96,74 @@
     let lastPlayerX = player.x;
     let lastPlayerY = player.y;
 
-    const bullets = [], lasers = [], warnings = [], level = [];
+    const bullets = [], lasers = [], level = [];
     const DURATION = 60;
     let startTime = 0;
 
+    const keys = {};
+    let joystick = { dx: 0, dy: 0 };
+
+    window.addEventListener('keydown', e => keys[e.key] = true);
+    window.addEventListener('keyup', e => keys[e.key] = false);
+
+    function isMobile() {
+      return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent);
+    }
+
+    if (isMobile()) {
+      document.getElementById('joystick').style.display = 'block';
+
+      const joy = document.getElementById('joystick');
+      const stick = document.getElementById('stick');
+
+      joy.addEventListener('touchstart', e => moveStick(e.touches[0]));
+      joy.addEventListener('touchmove', e => moveStick(e.touches[0]));
+      joy.addEventListener('touchend', () => {
+        stick.style.top = '30px';
+        stick.style.left = '30px';
+        joystick.dx = 0;
+        joystick.dy = 0;
+      });
+
+      function moveStick(touch) {
+        const rect = joy.getBoundingClientRect();
+        const x = touch.clientX - rect.left - 50;
+        const y = touch.clientY - rect.top - 50;
+        const dist = Math.min(40, Math.hypot(x, y));
+        const angle = Math.atan2(y, x);
+        stick.style.left = 50 + dist * Math.cos(angle) - 20 + 'px';
+        stick.style.top = 50 + dist * Math.sin(angle) - 20 + 'px';
+        joystick.dx = Math.cos(angle);
+        joystick.dy = Math.sin(angle);
+      }
+    }
+
     function update() {
-      const dx = ((keys['d'] || keys['ArrowRight']) ? 1 : 0) - ((keys['a'] || keys['ArrowLeft']) ? 1 : 0);
-      const dy = ((keys['s'] || keys['ArrowDown']) ? 1 : 0) - ((keys['w'] || keys['ArrowUp']) ? 1 : 0);
+      const dx = ((keys['d'] || keys['ArrowRight']) ? 1 : 0) - ((keys['a'] || keys['ArrowLeft']) ? 1 : 0) + joystick.dx;
+      const dy = ((keys['s'] || keys['ArrowDown']) ? 1 : 0) - ((keys['w'] || keys['ArrowUp']) ? 1 : 0) + joystick.dy;
       player.x += dx * player.speed;
       player.y += dy * player.speed;
       player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
       player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
 
       bullets.forEach((b, i) => {
+        if (b.type === 'spiral') {
+          b.angle += 0.05;
+          b.dx = Math.cos(b.angle) * 2;
+          b.dy = Math.sin(b.angle) * 2;
+        }
+        if (b.type === 'homing') {
+          const angle = Math.atan2((player.y + 15) - b.y, (player.x + 15) - b.x);
+          b.dx = Math.cos(angle) * 1.5;
+          b.dy = Math.sin(angle) * 1.5;
+        }
+
         b.x += b.dx;
         b.y += b.dy;
+
         if (b.life && Date.now() - b.start > b.life) bullets.splice(i, 1);
         if (b.type === 'explosive' && Date.now() - b.start > b.life - 500) b.r += 0.5;
+
         const dist = Math.hypot(player.x + 15 - b.x, player.y + 15 - b.y);
         if (dist < b.r + 15 && !player.invincible) {
           player.lives--;
@@ -98,11 +175,8 @@
       });
 
       lasers.forEach((l, i) => {
-        if (!l.active && Date.now() - l.spawnTime > 1000) {
-          l.active = true;
-        }
+        if (!l.active && Date.now() - l.spawnTime > 1000) l.active = true;
         if (Date.now() - l.spawnTime > 4000) lasers.splice(i, 1);
-
         if (l.active) l.angle += 0.01;
 
         const lx1 = l.x;
@@ -113,9 +187,7 @@
         const px = player.x + player.size / 2;
         const py = player.y + player.size / 2;
 
-        const dist = Math.abs((ly2 - ly1) * px - (lx2 - lx1) * py + lx2 * ly1 - ly2 * lx1) /
-                     Math.hypot(lx2 - lx1, ly2 - ly1);
-
+        const dist = Math.abs((ly2 - ly1) * px - (lx2 - lx1) * py + lx2 * ly1 - ly2 * lx1) / Math.hypot(lx2 - lx1, ly2 - ly1);
         const moved = Math.hypot(player.x - lastPlayerX, player.y - lastPlayerY) > 0.5;
 
         if (l.active && dist < 15 && !player.invincible) {
@@ -141,7 +213,13 @@
         ctx.fillStyle = 'cyan', ctx.fillRect(player.x, player.y, player.size, player.size);
 
       bullets.forEach(b => {
-        ctx.fillStyle = b.type === 'explosive' ? 'orange' : b.type === 'zigzag' ? 'magenta' : 'white';
+        ctx.fillStyle =
+          b.type === 'explosive' ? 'orange' :
+          b.type === 'zigzag' ? 'magenta' :
+          b.type === 'spiral' ? 'lime' :
+          b.type === 'homing' ? 'red' :
+          'white';
+
         ctx.beginPath();
         ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
         ctx.fill();
@@ -192,6 +270,20 @@
         for (let i = 0; i < 8; i++) {
           bullets.push({ x: cx, y: cy, dx: Math.cos(i) * 2, dy: Math.sin(i) * 2, r: 5, type: 'explosive', start: Date.now(), life: 1500 });
         }
+      } else if (type === 'spiral') {
+        for (let i = 0; i < 12; i++) {
+          const angle = i * Math.PI / 6;
+          bullets.push({
+            x: cx, y: cy,
+            dx: Math.cos(angle) * 1.5,
+            dy: Math.sin(angle) * 1.5,
+            r: 6, type: 'spiral',
+            start: Date.now(), life: 6000,
+            angle: angle
+          });
+        }
+      } else if (type === 'homing') {
+        bullets.push({ x: Math.random() * canvas.width, y: -10, r: 7, type: 'homing', start: Date.now(), life: 8000 });
       } else if (type === 'laser' || type === 'blueLaser') {
         const angle = Math.random() * Math.PI * 2;
         const length = Math.min(canvas.width, canvas.height);
@@ -208,19 +300,16 @@
           e.triggered = true;
         }
       });
-      update(); draw();
+      update();
+      draw();
       document.getElementById('progressBar').style.width = Math.min(100, (t / DURATION) * 100) + '%';
       if (player.lives <= 0) return alert('💀 Ты проиграл'), location.reload();
       if (t >= DURATION) return alert('🎉 Победа!'), location.href = 'index.html';
       requestAnimationFrame(gameLoop);
     }
 
-    const keys = {};
-    window.addEventListener('keydown', e => keys[e.key] = true);
-    window.addEventListener('keyup', e => keys[e.key] = false);
-
     for (let i = 2; i < DURATION; i += 2.5) {
-      const types = ['zigzag', 'laser', 'blueLaser', 'explosive'];
+      const types = ['zigzag', 'laser', 'blueLaser', 'explosive', 'spiral', 'homing'];
       if (i > DURATION / 2) types.push('explosive');
       level.push({ time: i, type: types[Math.floor(Math.random() * types.length)] });
     }

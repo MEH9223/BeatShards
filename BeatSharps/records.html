@@ -3,47 +3,127 @@
 <head>
   <meta charset="UTF-8">
   <title>📈 Таблица рекордов</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {
+    /* Загрузка */
+    #loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    #loader::after {
+      content: "Загрузка...";
+      font-size: 24px;
+      color: #0ff;
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    body {
+      background: linear-gradient(160deg, #000 0%, #020 100%);
       color: #0f0;
       font-family: monospace;
       padding: 20px;
     }
+
     h1 {
       text-align: center;
+      font-size: 36px;
+      color: #0f0;
+      text-shadow: 0 0 10px #0f0, 0 0 20px #0f0;
+      margin-bottom: 30px;
     }
+
     .record {
       margin: 10px auto;
-      padding: 10px;
-      border: 1px solid #0f0;
-      max-width: 400px;
-      border-radius: 10px;
-      background: #020;
+      padding: 20px;
+      border: 2px solid #0f0;
+      max-width: 450px;
+      border-radius: 15px;
+      background: rgba(0, 30, 0, 0.8);
+      box-shadow: 0 0 15px #003300;
+      transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+      color: #ccffcc;
     }
+
+    .record:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 25px #00ff88, 0 0 15px #00ff88 inset;
+      border-color: #00ff88;
+    }
+
+    .record b {
+      color: #0f0;
+      font-size: 20px;
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .record .date {
+      color: #999;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+
     .nav {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 30px;
     }
+
     .nav a {
       color: #0ff;
-      margin: 0 10px;
+      margin: 0 12px;
       text-decoration: none;
+      font-weight: bold;
+      font-size: 18px;
+      transition: 0.2s;
     }
+
     .nav a:hover {
-      text-decoration: underline;
+      text-shadow: 0 0 6px #0ff;
     }
+
     .empty {
       text-align: center;
-      color: gray;
-      margin-top: 30px;
+      color: #888;
+      margin-top: 40px;
+      font-size: 18px;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 10px;
+      }
+      h1 {
+        font-size: 26px;
+      }
+      .record {
+        max-width: 95%;
+        font-size: 16px;
+      }
     }
   </style>
 </head>
 <body>
+
+  <!-- Загрузка -->
+  <div id="loader"></div>
+
   <div class="nav">
     <a href="index.html">🎮 Уровни</a>
-    <a href="achievements.html">🏆 Достижения</a>
+    <a href="achivments.html">🏆 Достижения</a>
     <a href="records.html">📈 Рекорды</a>
   </div>
 
@@ -51,17 +131,23 @@
   <div id="recordsContainer"></div>
 
   <script>
+    window.addEventListener("load", () => {
+      const loader = document.getElementById("loader");
+      if (loader) loader.style.display = "none";
+    });
+
     const recordsContainer = document.getElementById("recordsContainer");
     let hasAny = false;
 
-    for (let i = 1; i <= 10; i++) {
+    for (let i = 1; i <= 13; i++) {
       const data = JSON.parse(localStorage.getItem(`level${i}`));
       if (data) {
         hasAny = true;
         const div = document.createElement("div");
         div.className = "record";
         const stars = "⭐️".repeat(data.stars || 0);
-        div.innerHTML = `<b>Level ${i}</b><br>📊 ${data.percent || 0}%<br>${stars}`;
+        const date = data.date ? `<div class="date">📅 ${data.date}</div>` : '';
+        div.innerHTML = `<b>Уровень ${i}</b>📊 ${data.percent || 0}%<br>${stars}${date}`;
         recordsContainer.appendChild(div);
       }
     }
@@ -70,5 +156,6 @@
       recordsContainer.innerHTML = `<p class="empty">Нет данных. Пройди хотя бы один уровень!</p>`;
     }
   </script>
+
 </body>
 </html>

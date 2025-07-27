@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Level 13</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    html, body { margin: 0; overflow: hidden; background: black; }
+    canvas { display: block; background: radial-gradient(#111, black); transition: background 1s linear; }
+    #info, #progressContainer, #exitButton {
+      position: absolute; z-index: 10; font-family: monospace; color: white;
+    }
+    #info { top: 10px; left: 10px; font-size: 20px; }
+    #progressContainer {
+      top: 10px; right: 10px; width: 200px; height: 20px;
+      background: #444; border: 1px solid white;
+    }
+    #progressBar { height: 100%; background: crimson; width: 0%; }
+    #exitButton {
+      bottom: 10px; right: 10px; padding: 5px 10px; font-size: 12px;
+      background: rgba(255, 255, 255, 0.1); border: 1px solid white; border-radius: 5px;
+      cursor: pointer;
+    }
+    #exitButton:hover { background: rgba(255, 255, 255, 0.2); }
+    #finalMessage {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      color: crimson;
+      font-size: 32px;
+      font-family: monospace;
+      z-index: 20;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">Жизни: 5</div>
+  <div id="progressContainer"><div id="progressBar"></div></div>
+  <div id="exitButton" onclick="location.href='index.html'">Выйти</div>
+  <canvas id="game"></canvas>
+  <audio id="music" src="undertale_ost_-_fan_charas_boss_theme_(zf.fm).mp3" loop></audio>
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+
+    const DURATION = 130;
+    const player = {
+      x: canvas.width / 2, y: canvas.height - 60,
+      size: 30, speed: 3, lives: 5,
+      invincible: false, lastHit: 0, invincibleTime: 1500
+    };
+
+    const bullets = [], level = [];
+    const info = document.getElementById('info');
+    const progressBar = document.getElementById('progressBar');
+    const music = document.getElementById('music');
+
+    const keys = {};
+    document.addEventListener('keydown', e => keys[e.key] = true);
+    document.addEventListener('keyup', e => keys[e.key] = false);
+
+    function spawn(type, currentTime) {
+      const add = (b) => { b.alpha = 0; bullets.push(b); };
+      const cx = canvas.width / 2, cy = canvas.height / 2;
+
+      if (type === 'charaSlashRain') {
+        const gap = Math.floor(Math.random() * (canvas.width / 60));
+        for (let x = 0; x < canvas.width; x += 60) {
+          if (Math.floor(x / 60) === gap) continue;
+          add({ x, y: -20, dx: 0, dy: 8, r: 10, color: 'white', spawn: Date.now(), life: 4000 });
+        }
+      }
+      if (type === 'charaXBlades') {
+        for (let i = 0; i < 20; i++) {
+          let angle = i % 2 === 0 ? Math.PI / 4 : 3 * Math.PI / 4;
+          let x = i % 2 === 0 ? 0 : canvas.width;
+          let y = (canvas.height / 20) * i;
+          add({ x, y, dx: Math.cos(angle) * 5, dy: Math.sin(angle) * 5, r: 8, color: 'crimson', spawn: Date.now(), life: 5000 });
+        }
+      }
+      if (type === 'charaCircleBlast') {
+        for (let i = 0; i < 30; i++) {
+          let angle = (Math.PI * 2 * i) / 30;
+          add({ x: cx, y: cy, dx: Math.cos(angle) * 3, dy: Math.sin(angle) * 3, r: 6, color: 'pink', spawn: Date.now(), life: 6000 });
+        }
+      }
+      if (type === 'charaPulseWall') {
+        const gapY = Math.floor(Math.random() * (canvas.height / 50));
+        for (let y = 0; y < canvas.height; y += 50) {
+          if (Math.floor(y / 50) === gapY) continue;
+          add({ x: -10, y: y + 25, dx: 6, dy: 0, r: 10, color: 'hotpink', spawn: Date.now(), life: 5000 });
+          add({ x: canvas.width + 10, y: y + 25, dx: -6, dy: 0, r: 10, color: 'hotpink', spawn: Date.now(), life: 5000 });
+        }
+      }
+      if (type === 'charaFinalStorm') {
+        const skip = Math.floor(Math.random() * 10);
+        for (let i = 0; i < 100; i++) {
+          if (i % 10 === skip) continue;
+          let x = (canvas.width / 100) * i;
+          add({ x, y: -20, dx: 0, dy: 10 + Math.random() * 5, r: 6, color: Math.random() < 0.5 ? 'white' : 'crimson', spawn: Date.now(), life: 3000 });
+        }
+      }
+      if (type === 'charaSpiralRain') {
+        for (let i = 0; i < 40; i++) {
+          let angle = 0.2 * i + currentTime;
+          add({
+            x: cx + Math.cos(angle) * 200,
+            y: -20 + i * 5,
+            dx: 0,
+            dy: 6,
+            r: 5,
+            color: 'violet',
+            spawn: Date.now(),
+            life: 5000
+          });
+        }
+      }
+      if (type === 'charaCrossPulse') {
+        for (let i = -1; i <= 1; i += 2) {
+          add({ x: cx, y: cy, dx: 6 * i, dy: 0, r: 8, color: 'white', spawn: Date.now(), life: 4000 });
+          add({ x: cx, y: cy, dx: 0, dy: 6 * i, r: 8, color: 'white', spawn: Date.now(), life: 4000 });
+        }
+      }
+    }
+
+    const attackSchedule = [];
+    for (let t = 3; t < DURATION; t += 2.2) {
+      let type;
+      if (t < 40) {
+        const earlyAttacks = ['charaSlashRain', 'charaSpiralRain', 'charaPulseWall', 'charaCrossPulse', 'charaCircleBlast'];
+        type = earlyAttacks[Math.floor(Math.random() * earlyAttacks.length)];
+      } else if (t < 85) {
+        const midAttacks = ['charaXBlades', 'charaCircleBlast', 'charaPulseWall', 'charaSpiralRain', 'charaCrossPulse'];
+        type = midAttacks[Math.floor(Math.random() * midAttacks.length)];
+      } else {
+        type = Math.random() < 0.5 ? 'charaFinalStorm' : 'charaSpiralRain';
+      }
+      attackSchedule.push({ time: t, type, triggered: false });
+    }
+
+    let startTime = Date.now();
+    let finalTextShown = false;
+    let lastHitFlash = 0;
+
+    function update() {
+      const t = (Date.now() - startTime) / 1000;
+
+      if (t >= 100) canvas.style.background = 'radial-gradient(crimson, black)';
+      if (t >= 125 && !finalTextShown) {
+        finalTextShown = true;
+        let msg = document.createElement('div');
+        msg.id = 'finalMessage';
+        msg.textContent = '(=';
+        document.body.appendChild(msg);
+      }
+
+      let dx = 0, dy = 0;
+      if (keys['ArrowUp'] || keys['w']) dy = -1;
+      if (keys['ArrowDown'] || keys['s']) dy = 1;
+      if (keys['ArrowLeft'] || keys['a']) dx = -1;
+      if (keys['ArrowRight'] || keys['d']) dx = 1;
+
+      player.x += dx * player.speed;
+      player.y += dy * player.speed;
+      player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
+      player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+
+      bullets.forEach(b => {
+        b.x += b.dx;
+        b.y += b.dy;
+        if (b.alpha < 1) b.alpha += 0.05;
+
+        let dist = Math.hypot(player.x + player.size / 2 - b.x, player.y + player.size / 2 - b.y);
+        if (dist < player.size && !player.invincible) {
+          player.lives--;
+          player.invincible = true;
+          player.lastHit = Date.now();
+          lastHitFlash = Date.now();
+          info.textContent = 'Жизни: ' + player.lives;
+        }
+      });
+
+      if (player.invincible && Date.now() - player.lastHit > player.invincibleTime)
+        player.invincible = false;
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (Date.now() - lastHitFlash < 200) {
+        ctx.fillStyle = 'rgba(255,0,0,0.2)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      if (!player.invincible || Math.floor(Date.now() / 100) % 2 === 0) {
+        ctx.fillStyle = 'red';
+        ctx.fillRect(player.x, player.y, player.size, player.size);
+      }
+
+      bullets.forEach(b => {
+        ctx.globalAlpha = b.alpha;
+        ctx.fillStyle = b.color;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      });
+    }
+
+    function gameLoop() {
+      const t = (Date.now() - startTime) / 1000;
+      attackSchedule.forEach(e => {
+        if (!e.triggered && t >= e.time) {
+          spawn(e.type, t);
+          e.triggered = true;
+        }
+      });
+
+      update(); draw();
+      progressBar.style.width = (t / DURATION * 100) + '%';
+      if (player.lives <= 0) return alert('Поражение!'), location.reload();
+      if (t >= DURATION) return alert('Победа!'), location.href = 'index.html';
+      requestAnimationFrame(gameLoop);
+    }
+
+    document.body.addEventListener('click', () => music.play().catch(() => {}), { once: true });
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
+</html>

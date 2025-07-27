@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Level 12</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    html, body { margin: 0; overflow: hidden; background: black; }
+    canvas { display: block; background: radial-gradient(#111, black); transition: background 1s linear; }
+    #info, #progressContainer, #exitButton {
+      position: absolute;
+      z-index: 10;
+      font-family: monospace;
+      color: white;
+    }
+    #info { top: 10px; left: 10px; font-size: 20px; }
+    #progressContainer {
+      top: 10px;
+      right: 10px;
+      width: 200px;
+      height: 20px;
+      background: #444;
+      border: 1px solid white;
+    }
+    #progressBar {
+      height: 100%;
+      background: crimson;
+      width: 0%;
+    }
+    #exitButton {
+      bottom: 10px;
+      right: 10px;
+      padding: 5px 10px;
+      font-size: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #exitButton:hover { background: rgba(255, 255, 255, 0.2); }
+    #joystick {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 100px;
+      height: 100px;
+      background: rgba(255,255,255,0.05);
+      border: 2px solid white;
+      border-radius: 50%;
+      z-index: 10;
+      touch-action: none;
+    }
+    #stick {
+      width: 40px;
+      height: 40px;
+      background: red;
+      border-radius: 50%;
+      position: absolute;
+      top: 30px;
+      left: 30px;
+      transform: translate(0, 0);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      #joystick { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="info">Жизни: 7</div>
+  <div id="progressContainer"><div id="progressBar"></div></div>
+  <div id="exitButton" onclick="location.href='index.html'">Выйти</div>
+  <canvas id="game"></canvas>
+  <div id="joystick"><div id="stick"></div></div>
+  <audio id="music" src="undertale_077. ASGORE.mp3" loop></audio>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+
+    let bullets = [];
+    const level = [];
+    const info = document.getElementById('info');
+    const progressBar = document.getElementById('progressBar');
+    const music = document.getElementById('music');
+
+    const joystick = document.getElementById('joystick');
+    const stick = document.getElementById('stick');
+    let joystickX = 0, joystickY = 0;
+    let dragging = false;
+    let joyStart = { x: 0, y: 0 };
+
+    joystick.addEventListener('touchstart', e => {
+      dragging = true;
+      const touch = e.touches[0];
+      joyStart = { x: touch.clientX, y: touch.clientY };
+    });
+    joystick.addEventListener('touchmove', e => {
+      if (!dragging) return;
+      const touch = e.touches[0];
+      const dx = touch.clientX - joyStart.x;
+      const dy = touch.clientY - joyStart.y;
+      const dist = Math.min(Math.hypot(dx, dy), 40);
+      const angle = Math.atan2(dy, dx);
+      const x = Math.cos(angle) * dist;
+      const y = Math.sin(angle) * dist;
+      stick.style.transform = `translate(${x}px, ${y}px)`;
+      joystickX = x / 40;
+      joystickY = y / 40;
+    });
+    joystick.addEventListener('touchend', () => {
+      dragging = false;
+      stick.style.transform = `translate(0, 0)`;
+      joystickX = joystickY = 0;
+    });
+
+    const DURATION = 156;
+    let startTime = 0;
+
+    const player = {
+      x: canvas.width / 2,
+      y: canvas.height / 1,
+      size: 30,
+      speed: 3,
+      lives: 7,
+      invincible: false,
+      lastHit: 0,
+      invincibleTime: 2000
+    };
+
+    const keys = {};
+    document.addEventListener('keydown', e => keys[e.key] = true);
+    document.addEventListener('keyup', e => keys[e.key] = false);
+
+    function spawn(type) {
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+
+      const addBullet = (b) => {
+        b.alpha = 0; // для плавного появления
+        bullets.push(b);
+      };
+
+      if (type === 'asgoreSpearsTop') {
+        const gapX = Math.floor(Math.random() * (canvas.width / 50));
+        for (let x = 0; x < canvas.width; x += 50) {
+          if (Math.floor(x / 50) === gapX) continue;
+          addBullet({
+            x: x + 25, y: -20, dx: 0, dy: 6,
+            r: 8, color: 'orangered',
+            spawn: Date.now(), life: 5000
+          });
+        }
+      }
+
+      if (type === 'asgoreSpearsDiag') {
+        const left = Math.random() < 0.5;
+        const count = 12;
+        for (let i = 0; i < count; i++) {
+          const x = left ? -20 : canvas.width + 20;
+          const y = i * (canvas.height / count);
+          const angle = left ? Math.PI / 4 : (3 * Math.PI) / 4;
+          addBullet({
+            x, y,
+            dx: Math.cos(angle) * 5,
+            dy: Math.sin(angle) * 5,
+            r: 8,
+            color: 'orange',
+            spawn: Date.now(),
+            life: 6000
+          });
+        }
+      }
+
+      if (type === 'asgoreWallBurst') {
+        const rows = 5;
+        for (let j = 0; j < rows; j++) {
+          const y = j * (canvas.height / rows);
+          const gapX = Math.floor(Math.random() * (canvas.width / 60));
+          for (let i = 0; i < canvas.width; i += 60) {
+            if (Math.floor(i / 60) === gapX) continue;
+            addBullet({
+              x: i + 30, y,
+              dx: 0, dy: 4 + Math.random() * 2,
+              r: 6,
+              color: 'orangered',
+              spawn: Date.now(),
+              life: 5000
+            });
+          }
+        }
+      }
+
+      if (type === 'asgoreOrangeBlue') {
+        const gapX = Math.floor(Math.random() * (canvas.width / 50));
+        for (let x = 0; x < canvas.width; x += 50) {
+          if (Math.floor(x / 50) === gapX) continue;
+          const isBlue = Math.random() < 0.5;
+          addBullet({
+            x: x + 25,
+            y: -20,
+            dx: 0,
+            dy: 5,
+            r: 8,
+            color: isBlue ? 'blue' : 'orange',
+            blue: isBlue,
+            orange: !isBlue,
+            spawn: Date.now(),
+            life: 6000
+          });
+        }
+      }
+    }
+
+    const attackTypes = ['asgoreSpearsTop', 'asgoreSpearsDiag', 'asgoreWallBurst', 'asgoreOrangeBlue'];
+    for (let i = 5; i < DURATION; i += 1.8) {
+      const type = attackTypes[Math.floor(Math.random() * attackTypes.length)];
+      level.push({ time: i, type, triggered: false });
+    }
+
+    function update() {
+      let dx = joystickX || 0;
+      let dy = joystickY || 0;
+      if (keys['ArrowUp'] || keys['w']) dy = -1;
+      if (keys['ArrowDown'] || keys['s']) dy = 1;
+      if (keys['ArrowLeft'] || keys['a']) dx = -1;
+      if (keys['ArrowRight'] || keys['d']) dx = 1;
+
+      player.x += dx * player.speed;
+      player.y += dy * player.speed;
+
+      bullets = bullets.filter(b => Date.now() - b.spawn <= b.life);
+      bullets.forEach(b => {
+        b.x += b.dx;
+        b.y += b.dy;
+        if (b.alpha < 1) b.alpha += 0.05;
+
+        const dist = Math.hypot(player.x - b.x, player.y - b.y);
+        const moving = dx !== 0 || dy !== 0;
+        if (dist < player.size && !player.invincible) {
+          if ((b.orange && moving) || (b.blue && !moving) || (!b.orange && !b.blue)) {
+            player.lives--;
+            player.invincible = true;
+            player.lastHit = Date.now();
+            info.textContent = 'Жизни: ' + player.lives;
+          }
+        }
+      });
+
+      if (player.invincible && Date.now() - player.lastHit > player.invincibleTime)
+        player.invincible = false;
+
+      player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
+      player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // фон сменяется в зависимости от времени
+      const t = (Date.now() - startTime) / 1000;
+      if (t > DURATION * 0.66) canvas.style.background = 'radial-gradient(#400, black)';
+      else if (t > DURATION * 0.33) canvas.style.background = 'radial-gradient(#222, black)';
+
+      if (!player.invincible || Math.floor(Date.now() / 100) % 2 === 0) {
+        ctx.fillStyle = 'red';
+        ctx.fillRect(player.x, player.y, player.size, player.size);
+      }
+
+      bullets.forEach(b => {
+        ctx.globalAlpha = Math.min(1, b.alpha);
+        ctx.fillStyle = b.color;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      });
+    }
+
+    function gameLoop() {
+      const t = (Date.now() - startTime) / 1000;
+      level.forEach(e => {
+        if (!e.triggered && t >= e.time) {
+          spawn(e.type);
+          e.triggered = true;
+        }
+      });
+
+      update();
+      draw();
+      progressBar.style.width = Math.min(100, (t / DURATION) * 100) + '%';
+      if (player.lives <= 0) return alert('💀 Поражение!'), location.reload();
+      if (t >= DURATION) return alert('🏆 Победа!'), location.href = 'index.html';
+      requestAnimationFrame(gameLoop);
+    }
+
+    document.body.addEventListener('click', () => {
+      music.play().catch(() => {});
+    }, { once: true });
+
+    startTime = Date.now();
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
+</html>

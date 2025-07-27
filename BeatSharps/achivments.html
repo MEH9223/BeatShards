@@ -3,53 +3,154 @@
 <head>
   <meta charset="UTF-8">
   <title>🏆 Достижения</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {
+    #loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    #loader::after {
+      content: "Загрузка...";
+      font-size: 24px;
+      color: #0ff;
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    body {
+      background: linear-gradient(160deg, #000 0%, #020 100%);
       color: #0f0;
       font-family: monospace;
       padding: 20px;
     }
+
     h1 {
       text-align: center;
+      font-size: 36px;
+      color: #0f0;
+      text-shadow: 0 0 10px #0f0, 0 0 20px #0f0;
+      margin-bottom: 30px;
     }
+
     .nav {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 30px;
     }
+
     .nav a {
       color: #0ff;
-      margin: 0 10px;
+      margin: 0 12px;
       text-decoration: none;
+      font-weight: bold;
+      font-size: 18px;
+      transition: 0.2s;
     }
+
     .nav a:hover {
-      text-decoration: underline;
+      text-shadow: 0 0 6px #0ff;
     }
+
     .achievement {
       margin: 15px auto;
-      padding: 10px;
-      max-width: 400px;
-      border-radius: 10px;
-      border: 1px solid #0f0;
-      background: #020;
+      padding: 20px;
+      max-width: 450px;
+      border-radius: 14px;
+      border: 2px solid #0f0;
+      background: rgba(0, 30, 0, 0.8);
+      box-shadow: 0 0 15px #003300;
       transition: 0.3s;
+      animation: fadeIn 0.5s forwards;
+      opacity: 0;
+      transform: translateY(10px);
     }
+
     .achievement.locked {
       color: #444;
       background: #111;
-      border-color: #333;
+      border-color: #222;
+      box-shadow: none;
+      text-shadow: none;
     }
+
     .achievement.unlocked {
       border-color: lime;
       background: #030;
-      box-shadow: 0 0 10px lime;
+      box-shadow: 0 0 20px lime;
+      color: #ccffcc;
     }
+
+    .achievement b {
+      font-size: 18px;
+      color: #0f0;
+    }
+
+    .achievement small {
+      display: block;
+      margin-top: 5px;
+      font-size: 14px;
+      color: #aaa;
+    }
+
+    .achievement.unlocked small {
+      color: #bfb;
+    }
+
     .icon {
-      margin-right: 8px;
+      margin-right: 10px;
+      font-size: 20px;
+      vertical-align: middle;
+    }
+
+    @keyframes fadeIn {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Скрытая кнопка */
+    #secretTrigger {
+      position: fixed;
+      bottom: 0;
+      right: 0;
+      width: 30px;
+      height: 30px;
+      opacity: 0.05;
+      cursor: pointer;
+      z-index: 10000;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 10px;
+      }
+      h1 {
+        font-size: 26px;
+      }
+      .achievement {
+        max-width: 95%;
+        font-size: 16px;
+      }
     }
   </style>
 </head>
 <body>
+
+  <div id="loader"></div>
+
   <div class="nav">
     <a href="index.html">🎮 Уровни</a>
     <a href="achievements.html">🏆 Достижения</a>
@@ -59,23 +160,28 @@
   <h1>🏆 Достижения</h1>
   <div id="achievementsContainer"></div>
 
+  <!-- Скрытая зона -->
+  <div id="secretTrigger" title="😏"></div>
+
   <script>
+    window.addEventListener("load", () => {
+      const loader = document.getElementById("loader");
+      if (loader) loader.style.display = "none";
+    });
+
     const container = document.getElementById("achievementsContainer");
 
-    // Собираем данные по всем уровням
     let passedLevels = 0;
     let nightmarePassed = 0;
-    const levelData = [];
 
     for (let i = 1; i <= 10; i++) {
       const data = JSON.parse(localStorage.getItem(`level${i}`));
       if (data && data.percent >= 100) {
         passedLevels++;
-        if (i === 10) nightmarePassed++; // Level 10 считается кошмаром
+        if (i === 10) nightmarePassed++;
       }
     }
 
-    // Шаблон достижений
     const achievements = [
       {
         icon: "👣",
@@ -103,12 +209,35 @@
       }
     ];
 
-    achievements.forEach(ach => {
+    achievements.forEach((ach, index) => {
       const div = document.createElement("div");
       div.className = `achievement ${ach.unlocked ? "unlocked" : "locked"}`;
+      div.style.animationDelay = `${index * 0.15}s`;
       div.innerHTML = `<b class="icon">${ach.icon}</b> <b>${ach.title}</b><br><small>${ach.desc}</small>`;
       container.appendChild(div);
     });
+
+    // Секрет
+    const secretKey = "secretAchievementUnlocked";
+
+    function showSecretAchievement() {
+      const div = document.createElement("div");
+      div.className = "achievement unlocked";
+      div.innerHTML = `<b class="icon">🧠</b> <b>Секрет найден!</b><br><small>Ты нашёл то, что скрыто от всех.</small>`;
+      container.appendChild(div);
+    }
+
+    if (localStorage.getItem(secretKey) === "true") {
+      showSecretAchievement();
+    }
+
+    document.getElementById("secretTrigger").addEventListener("click", () => {
+      if (localStorage.getItem(secretKey) !== "true") {
+        localStorage.setItem(secretKey, "true");
+        showSecretAchievement();
+      }
+    });
   </script>
+
 </body>
 </html>
