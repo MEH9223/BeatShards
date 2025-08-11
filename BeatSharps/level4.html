@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Level 4</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     html, body {
       margin: 0;
@@ -25,6 +25,7 @@
       color: white;
       font-family: monospace;
       z-index: 10;
+      text-shadow: 0 0 5px #ff0000;
     }
     #progressContainer {
       position: absolute;
@@ -33,13 +34,16 @@
       width: 200px;
       height: 20px;
       background: #444;
-      border: 1px solid white;
+      border: 1px solid #ff4444;
       z-index: 10;
+      border-radius: 5px;
+      overflow: hidden;
     }
     #progressBar {
       height: 100%;
-      background: lime;
+      background: linear-gradient(90deg, #ff0000, #ff6600);
       width: 0%;
+      transition: width 0.2s ease;
     }
     #exitButton {
       position: absolute;
@@ -48,14 +52,16 @@
       padding: 5px 10px;
       font-size: 12px;
       color: white;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid white;
+      background: rgba(255, 0, 0, 0.15);
+      border: 1px solid #ff0000;
       border-radius: 5px;
       cursor: pointer;
       z-index: 10;
+      transition: background 0.3s ease;
+      text-shadow: 0 0 4px #ff0000;
     }
     #exitButton:hover {
-      background: rgba(255, 255, 255, 0.2);
+      background: rgba(255, 0, 0, 0.3);
     }
     #joystick {
       position: absolute;
@@ -63,21 +69,26 @@
       right: 20px;
       width: 100px;
       height: 100px;
-      background: rgba(255,255,255,0.05);
-      border: 2px solid white;
+      background: rgba(255, 0, 0, 0.1);
+      border: 2px solid #ff0000;
       border-radius: 50%;
       z-index: 10;
       touch-action: none;
+      user-select: none;
     }
     #stick {
       width: 40px;
       height: 40px;
-      background: cyan;
+      background: #ff4444;
       border-radius: 50%;
       position: absolute;
       top: 30px;
       left: 30px;
       transform: translate(0, 0);
+      transition: background 0.2s ease;
+    }
+    #joystick:active #stick {
+      background: #ff0000;
     }
     @media (hover: hover) and (pointer: fine) {
       #joystick {
@@ -152,17 +163,10 @@
       joystickX = joystickY = 0;
     });
 
-    function saveProgress(percent, win = false) {
-      const levelKey = 'level4';
-      const old = JSON.parse(localStorage.getItem(levelKey)) || { stars: 0, percent: 0 };
-      const stars = win ? 3 : percent >= 75 ? 2 : percent >= 40 ? 1 : 0;
-      const newPercent = Math.max(old.percent, percent);
-      const newStars = Math.max(old.stars, stars);
-      localStorage.setItem(levelKey, JSON.stringify({ percent: newPercent, stars: newStars }));
-    }
-
     window.addEventListener('keydown', e => keys[e.key] = true);
     window.addEventListener('keyup', e => keys[e.key] = false);
+
+    let flash = 0;
 
     function update() {
       const dx = ((keys['d'] || keys['ArrowRight']) ? 1 : 0) - ((keys['a'] || keys['ArrowLeft']) ? 1 : 0) + joystickX;
@@ -185,6 +189,7 @@
             player.invincible = true;
             player.lastHit = Date.now();
             updateHP();
+            flash = 0.4;
             if (player.lives <= 0) {
               const percent = Math.floor((Date.now() - startTime) / 1000 / DURATION * 100);
               saveProgress(percent, false);
@@ -198,16 +203,25 @@
       if (player.invincible && Date.now() - player.lastHit > player.invincibleTime) {
         player.invincible = false;
       }
+
+      if (flash > 0) flash -= 0.03;
     }
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (flash > 0) {
+        ctx.fillStyle = `rgba(255,0,0,${flash})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
       if (!player.invincible || Math.floor(Date.now() / 100) % 2 === 0) {
-        ctx.fillStyle = 'cyan';
+        ctx.fillStyle = 'red';
         ctx.fillRect(player.x, player.y, player.size, player.size);
       }
+
       for (let b of bullets) {
-        ctx.fillStyle = b.blue ? 'blue' : 'magenta';
+        ctx.fillStyle = b.blue ? 'blue' : 'red';
         ctx.beginPath();
         ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
         ctx.fill();
@@ -222,13 +236,22 @@
       progressBar.style.width = Math.min(100, (t / DURATION) * 100) + '%';
     }
 
+    function saveProgress(percent, win = false) {
+      const levelKey = 'level4';
+      const old = JSON.parse(localStorage.getItem(levelKey)) || { stars: 0, percent: 0 };
+      const stars = win ? 3 : percent >= 75 ? 2 : percent >= 40 ? 1 : 0;
+      const newPercent = Math.max(old.percent, percent);
+      const newStars = Math.max(old.stars, stars);
+      localStorage.setItem(levelKey, JSON.stringify({ percent: newPercent, stars: newStars }));
+    }
+
     function spawn(type) {
       if (type === 'blue') {
         const x = Math.random() * canvas.width;
         bullets.push({ x, y: -10, dx: 0, dy: 2.2, r: 12, blue: true });
       } else if (type === 'rainSide') {
         for (let i = 0; i < canvas.height; i += 50) {
-          bullets.push({ x: canvas.width + 10, y: i, dx: -3, dy: 0, r: 8 });
+          bullets.push({ x: canvas.width + 10, y: i, dx: -3, dy: 0, r: 8, blue: false });
         }
       } else {
         for (let i = 0; i < 8; i++) {
@@ -238,7 +261,8 @@
             y: canvas.height / 2,
             dx: Math.cos(angle) * 2.5,
             dy: Math.sin(angle) * 2.5,
-            r: 8
+            r: 8,
+            blue: false
           });
         }
       }

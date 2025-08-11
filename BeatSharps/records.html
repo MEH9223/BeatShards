@@ -1,61 +1,107 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>📈 Таблица рекордов</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    /* Загрузка */
-    #loader {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: #000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-    }
-
-    #loader::after {
-      content: "Загрузка...";
-      font-size: 24px;
-      color: #0ff;
-      animation: blink 1s infinite;
-    }
-
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
-
+    /* Общий сброс и фон с анимацией */
     body {
-      background: linear-gradient(160deg, #000 0%, #020 100%);
-      color: #0f0;
-      font-family: monospace;
+      margin: 0;
       padding: 20px;
+      font-family: monospace;
+      color: #0f0;
+      overflow-x: hidden;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #000, #111, #000);
+      background-size: 400% 400%;
+      animation: backgroundMove 20s ease infinite;
+      position: relative;
+      z-index: 0;
     }
 
+    @keyframes backgroundMove {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* Контейнер для квадратов */
+    #backgroundSquares {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      overflow: visible;
+      z-index: -1;
+    }
+
+    /* Квадраты */
+    .square {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, rgba(0,255,255,0.2), rgba(0,255,255,0.05));
+      border: 1px solid rgba(0,255,255,0.3);
+      border-radius: 6px;
+      filter: drop-shadow(0 0 4px rgba(0,255,255,0.6));
+      animation-timing-function: linear;
+      mix-blend-mode: screen;
+      opacity: 0.4;
+    }
+
+    /* Вращение и плавное изменение прозрачности */
+    @keyframes rotateSquare {
+      from { transform: rotate(0deg); opacity: 0.4; }
+      50% { opacity: 0.8; }
+      to { transform: rotate(360deg); opacity: 0.4; }
+    }
+
+    /* Навигация */
+    .nav {
+      text-align: center;
+      margin-bottom: 30px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .nav a {
+      color: #0ff;
+      margin: 0 12px;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 18px;
+      transition: 0.2s;
+      text-shadow: 0 0 5px #0ff;
+    }
+
+    .nav a:hover {
+      text-shadow: 0 0 10px #0ff;
+    }
+
+    /* Заголовок */
     h1 {
       text-align: center;
       font-size: 36px;
       color: #0f0;
-      text-shadow: 0 0 10px #0f0, 0 0 20px #0f0;
+      text-shadow: 0 0 15px #0f0, 0 0 30px #0f0;
       margin-bottom: 30px;
+      position: relative;
+      z-index: 1;
     }
 
+    /* Записи рекордов */
     .record {
       margin: 10px auto;
       padding: 20px;
       border: 2px solid #0f0;
       max-width: 450px;
       border-radius: 15px;
-      background: rgba(0, 30, 0, 0.8);
+      background: rgba(0, 30, 0, 0.85);
       box-shadow: 0 0 15px #003300;
       transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
       color: #ccffcc;
+      position: relative;
+      z-index: 1;
     }
 
     .record:hover {
@@ -77,29 +123,38 @@
       margin-top: 5px;
     }
 
-    .nav {
-      text-align: center;
-      margin-bottom: 30px;
-    }
-
-    .nav a {
-      color: #0ff;
-      margin: 0 12px;
-      text-decoration: none;
-      font-weight: bold;
-      font-size: 18px;
-      transition: 0.2s;
-    }
-
-    .nav a:hover {
-      text-shadow: 0 0 6px #0ff;
-    }
-
     .empty {
       text-align: center;
       color: #888;
       margin-top: 40px;
       font-size: 18px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Загрузка */
+    #loader {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    }
+
+    #loader::after {
+      content: "Загрузка...";
+      font-size: 24px;
+      color: #0ff;
+      animation: blink 1s infinite;
+      text-shadow: 0 0 8px #0ff;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
     }
 
     @media (max-width: 600px) {
@@ -113,17 +168,24 @@
         max-width: 95%;
         font-size: 16px;
       }
+      .nav a {
+        display: block;
+        margin: 8px 0;
+      }
     }
   </style>
 </head>
 <body>
+
+  <!-- Анимированные квадраты на фоне -->
+  <div id="backgroundSquares"></div>
 
   <!-- Загрузка -->
   <div id="loader"></div>
 
   <div class="nav">
     <a href="index.html">🎮 Уровни</a>
-    <a href="achivments.html">🏆 Достижения</a>
+    <a href="achievements.html">🏆 Достижения</a>
     <a href="records.html">📈 Рекорды</a>
   </div>
 
@@ -131,11 +193,35 @@
   <div id="recordsContainer"></div>
 
   <script>
+    // Убираем лоадер при загрузке
     window.addEventListener("load", () => {
       const loader = document.getElementById("loader");
       if (loader) loader.style.display = "none";
     });
 
+    // Создаём и анимируем квадраты фона
+    const background = document.getElementById('backgroundSquares');
+    const squaresCount = 25;
+
+    for(let i = 0; i < squaresCount; i++) {
+      const sq = document.createElement('div');
+      sq.classList.add('square');
+
+      // Рандом позиция и задержка анимации
+      sq.style.top = Math.random() * 100 + 'vh';
+      sq.style.left = Math.random() * 100 + 'vw';
+      sq.style.width = sq.style.height = (20 + Math.random() * 40) + 'px';
+      sq.style.animationDuration = (30 + Math.random() * 30) + 's';
+      sq.style.animationDelay = (Math.random() * 30) + 's';
+      sq.style.opacity = 0.2 + Math.random() * 0.4;
+
+      // Вращение
+      sq.style.animationName = 'rotateSquare';
+
+      background.appendChild(sq);
+    }
+
+    // Загрузка рекордов из localStorage и отображение
     const recordsContainer = document.getElementById("recordsContainer");
     let hasAny = false;
 
@@ -156,6 +242,5 @@
       recordsContainer.innerHTML = `<p class="empty">Нет данных. Пройди хотя бы один уровень!</p>`;
     }
   </script>
-
 </body>
 </html>

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Лобби</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
       margin: 0;
@@ -14,27 +14,27 @@
       color: white;
       font-family: 'Courier New', monospace;
       overflow-x: hidden;
+      position: relative;
+      z-index: 10;
     }
-  
+
     @keyframes backgroundMove {
       0% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
-  
+
     #loader {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
       background: #000;
       display: flex;
       justify-content: center;
       align-items: center;
       z-index: 9999;
     }
-  
+
     #loader::after {
       content: "Загрузка...";
       font-size: 24px;
@@ -42,19 +42,20 @@
       animation: blink 1s infinite;
       text-shadow: 0 0 10px #0ff;
     }
-  
+
     @keyframes blink {
-      0% { opacity: 1; }
+      0%, 100% { opacity: 1; }
       50% { opacity: 0.5; }
-      100% { opacity: 1; }
     }
-  
+
     .nav {
       text-align: center;
       margin-bottom: 30px;
       animation: fadeIn 1.5s ease;
+      position: relative;
+      z-index: 11;
     }
-  
+
     .nav a {
       color: #0ff;
       margin: 0 12px;
@@ -62,12 +63,13 @@
       font-weight: bold;
       transition: 0.3s;
       text-shadow: 0 0 5px #0ff;
+      cursor: pointer;
     }
-  
+
     .nav a:hover {
       text-shadow: 0 0 10px #0ff;
     }
-  
+
     h1 {
       text-align: center;
       margin-bottom: 30px;
@@ -75,12 +77,14 @@
       text-shadow: 0 0 15px #0ff;
       animation: fadeIn 1s ease forwards;
       opacity: 0;
+      position: relative;
+      z-index: 11;
     }
-  
+
     @keyframes fadeIn {
       to { opacity: 1; }
     }
-  
+
     .level {
       margin: 20px auto;
       padding: 20px;
@@ -93,26 +97,31 @@
       box-shadow: 0 0 10px #000;
       position: relative;
       overflow: hidden;
+      cursor: pointer;
+      z-index: 11;
     }
-  
-    .level:hover {
+
+    .level:hover:not(.locked) {
       transform: scale(1.03);
       box-shadow: 0 0 20px #0ff4;
       border-color: #0ff;
     }
-  
+
     .level a {
       font-size: 20px;
       color: #0ff;
       text-decoration: none;
       font-weight: bold;
       text-shadow: 0 0 5px #0ff;
+      pointer-events: auto;
+      cursor: pointer;
+      user-select: none;
     }
-  
-    .level a:hover {
+
+    .level a:hover:not(.locked a) {
       text-decoration: underline;
     }
-  
+
     .progress {
       margin-top: 10px;
       font-size: 14px;
@@ -120,39 +129,51 @@
       opacity: 0;
       transition: opacity 0.5s ease;
     }
-  
+
     .progress.shown {
       opacity: 1;
     }
-  
+
     .level.completed {
+      background: #013d01;
       border-color: lime;
-      background: #020;
-      box-shadow: 0 0 10px lime;
+      box-shadow: 0 0 15px 3px rgba(50, 205, 50, 0.7);
+      animation: pulseSoft 3s ease-in-out infinite;
     }
-  
+
+    @keyframes pulseSoft {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 15px 3px rgba(50, 205, 50, 0.7);
+      }
+      50% {
+        transform: scale(1.03);
+        box-shadow: 0 0 25px 6px rgba(50, 205, 50, 0.9);
+      }
+    }
+
     .medium {
       background: #333300;
       border-color: gold;
     }
-  
+
     .hard {
       background: #330000;
       border-color: red;
     }
-  
+
     .veryhard {
       background: #220000;
       border: 2px solid darkred;
     }
-  
+
     .nightmare {
       background: #1a0000;
       border: 3px solid crimson;
       animation: blink 0.8s infinite alternate;
       box-shadow: 0 0 10px crimson;
     }
-  
+
     .warning {
       background-color: #290101;
       color: red;
@@ -161,25 +182,29 @@
       text-shadow: 0 0 5px red, 0 0 10px red;
       animation: flicker 0.3s infinite alternate;
     }
-  
+
     @keyframes flicker {
       from { opacity: 1; }
       to { opacity: 0.6; }
     }
-  
+
+    /* --- Классы для заблокированных уровней --- */
     .locked {
       opacity: 0.4;
       background: #111;
       border: 1px dashed gray;
       cursor: not-allowed;
       position: relative;
+      pointer-events: none; /* Блокируем клики */
     }
-  
+
     .locked a {
-      color: gray;
+      color: gray !important;
       pointer-events: none;
+      cursor: default;
+      user-select: none;
     }
-  
+
     .locked:hover::after {
       content: attr(data-tooltip);
       position: absolute;
@@ -192,13 +217,9 @@
       font-size: 12px;
       white-space: nowrap;
       z-index: 1000;
+      pointer-events: none;
     }
-  
-    .unlocked {
-      opacity: 1;
-      cursor: pointer;
-    }
-  
+
     button {
       display: block;
       margin: 40px auto;
@@ -211,83 +232,111 @@
       cursor: pointer;
       font-size: 18px;
       transition: 0.3s;
-      box-shadow: 0 0 10px #0ff6;
+      box-shadow: 0 0 10px rgba(21, 157, 157, 0.4);
+      position: relative;
+      z-index: 11;
     }
-  
+
     button:hover {
       background: #0ff;
       color: black;
       box-shadow: 0 0 15px #0ff;
     }
-  
+
     @media (max-width: 600px) {
       body {
         padding: 10px;
       }
-  
       h1 {
         font-size: 28px;
       }
-  
       .level {
         max-width: 90%;
         font-size: 16px;
       }
-  
       .progress {
         font-size: 12px;
       }
-  
       .nav a {
         display: block;
         margin: 8px 0;
       }
-  
       button {
         width: 100%;
       }
     }
-  </style>  
+
+    #bgCanvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+      pointer-events: none;
+      background: transparent;
+      display: block;
+    }
+  </style>
 </head>
 <body>
 
-<div id="loader"></div>
+  <!-- Фоновый canvas -->
+  <canvas id="bgCanvas"></canvas>
 
-<div class="nav">
-  <a href="index.html">🎮 Уровни</a>
-  <a href="achivments.html">🏆 Достижения</a>
-  <a href="records.html">📈 Рекорды</a>
-</div>
+  <div id="loader"></div>
 
-<h1>Выбор уровня</h1>
+  <div class="nav">
+    <a href="index.html">🎮 Уровни</a>
+    <a href="achivments.html">🏆 Достижения</a>
+    <a href="records.html">📈 Рекорды</a>
+  </div>
 
-<div class="level"><a href="level1.html">Level 1: MEGALOVINA</a><div class="progress" id="level1Progress">Нет прогресса</div></div>
-<div class="level hard"><a href="level2.html">Level 2: Battle Against True Hero</a><div class="progress" id="level2Progress">Нет прогресса</div></div>
-<div class="level"><a href="level3.html">Level 3: Spider Dance</a><div class="progress" id="level3Progress">Нет прогресса</div></div>
-<div class="level hard"><a href="level4.html">Level 4: Bonetrousle</a><div class="progress" id="level4Progress">Нет прогресса</div></div>
-<div class="level medium"><a href="level5.html">Level 5: Ghost Fight</a><div class="progress" id="level5Progress">Нет прогресса</div></div>
-<div class="level hard"><a href="level6.html">Level 6: Metal Crusher</a><div class="progress" id="level6Progress">Нет прогресса</div></div>
-<div class="level warning"><div class="warning"><a href="level7.html">⚠ Level 7: YOUR BEST NIGHTMARE ⚠</a></div><div class="progress" id="level7Progress">Нет прогресса</div></div>
+  <h1>Выбор уровня</h1>
 
-<div class="level locked" id="level8" data-tooltip="Пройди уровни 1 и 3, чтобы открыть"><a href="level8.html" onclick="return false;">🔒 Level 8: Dummy!</a><div class="progress" id="level8Progress">Откроется после 1 и 3</div></div>
-<div class="level locked" id="level9" data-tooltip="Пройди уровни 2 и 4, чтобы открыть"><a href="level9.html" onclick="return false;">🔒 Level 9: Power Of NEO</a><div class="progress" id="level9Progress">Откроется после 2 и 4</div></div>
-<div class="level locked" id="level10" data-tooltip="Пройди уровни 6 и 7, чтобы открыть"><a href="level10.html" onclick="return false;">🔒 Level 10: Final Judgement</a><div class="progress" id="level10Progress">Откроется после 6 и 7</div></div>
-<div class="level locked" id="level11" data-tooltip="Пройди уровни 8 и 9, чтобы открыть"><a href="level11.html" onclick="return false;">🔒 Level 11: Dreams</a><div class="progress" id="level11Progress">Откроется после 8 и 9</div></div>
-<div class="level locked" id="level12" data-tooltip="Пройди уровень 10, чтобы открыть"><a href="level12.html" onclick="return false;">🔒 Level 12: ASGORE</a><div class="progress" id="level12Progress">Откроется после 10</div></div>
-<div class="level locked" id="level13" data-tooltip="Пройди уровни 11 и 12, чтобы открыть"><a href="level13.html" onclick="return false;">🔒 Level 13: True Genocide</a><div class="progress" id="level13Progress">Откроется после 11 и 12</div></div>
+  <!-- Уровни -->
+  <div class="level"><a href="level1.html">Level 1: MEGALOVINA</a><div class="progress" id="level1Progress">Нет прогресса</div></div>
+  <div class="level hard"><a href="level2.html">Level 2: Battle Against True Hero</a><div class="progress" id="level2Progress">Нет прогресса</div></div>
+  <div class="level"><a href="level3.html">Level 3: Spider Dance</a><div class="progress" id="level3Progress">Нет прогресса</div></div>
+  <div class="level hard"><a href="level4.html">Level 4: Bonetrousle</a><div class="progress" id="level4Progress">Нет прогресса</div></div>
+  <div class="level medium"><a href="level5.html">Level 5: Ghost Fight</a><div class="progress" id="level5Progress">Нет прогресса</div></div>
+  <div class="level hard"><a href="level6.html">Level 6: Metal Crusher</a><div class="progress" id="level6Progress">Нет прогресса</div></div>
+  <div class="level warning"><div class="warning"><a href="level7.html">⚠ Level 7: YOUR BEST NIGHTMARE ⚠</a></div><div class="progress" id="level7Progress">Нет прогресса</div></div>
 
-<button onclick="resetProgress()">Сбросить прогресс</button>
+  <div class="level locked" id="level8" data-tooltip="Пройди уровни 1 и 3, чтобы открыть">
+    <a href="level8.html">🔒 Level 8: Dummy!</a><div class="progress" id="level8Progress">Откроется после 1 и 3</div>
+  </div>
+  <div class="level locked" id="level9" data-tooltip="Пройди уровни 2 и 4, чтобы открыть">
+    <a href="level9.html">🔒 Level 9: Power Of NEO</a><div class="progress" id="level9Progress">Откроется после 2 и 4</div>
+  </div>
+  <div class="level locked" id="level10" data-tooltip="Пройди уровни 6 и 7, чтобы открыть">
+    <a href="level10.html">🔒 Level 10: Final Judgement</a><div class="progress" id="level10Progress">Откроется после 6 и 7</div>
+  </div>
+  <div class="level locked" id="level11" data-tooltip="Пройди уровни 8 и 9, чтобы открыть">
+    <a href="level11.html">🔒 Level 11: Dreams</a><div class="progress" id="level11Progress">Откроется после 8 и 9</div>
+  </div>
+  <div class="level locked" id="level12" data-tooltip="Пройди уровень 10, чтобы открыть">
+    <a href="level12.html">🔒 Level 12: ASGORE</a><div class="progress" id="level12Progress">Откроется после 10</div>
+  </div>
+  <div class="level locked" id="level13" data-tooltip="Пройди уровни 11 и 12, чтобы открыть">
+    <a href="level13.html">🔒 Level 13: True Genocide</a><div class="progress" id="level13Progress">Откроется после 11 и 12</div>
+  </div>
 
-<audio autoplay loop>
-  <source src="music.mp3" type="audio/mpeg">
-  Ваш браузер не поддерживает аудио.
-</audio>
+  <button onclick="resetProgress()">Сбросить прогресс</button>
+
+  <audio autoplay loop>
+    <source src="music.mp3" type="audio/mpeg" />
+    Ваш браузер не поддерживает аудио.
+  </audio>
 
 <script>
+  // --- Скрытие лоадера ---
   window.addEventListener("load", () => {
-    document.getElementById("loader").style.display = "none";
+    setTimeout(() => {
+      document.getElementById("loader").style.display = "none";
+    }, 300);
   });
 
+  // --- Прогресс ---
   function showProgress(levelKey, elementId) {
     const data = JSON.parse(localStorage.getItem(levelKey));
     const el = document.getElementById(elementId);
@@ -317,6 +366,7 @@
     showProgress(`level${i}`, `level${i}Progress`);
   }
 
+  // --- Разблокировка уровней ---
   function unlockLevels() {
     const is1 = JSON.parse(localStorage.getItem("level1"))?.percent >= 100;
     const is2 = JSON.parse(localStorage.getItem("level2"))?.percent >= 100;
@@ -330,25 +380,122 @@
     const is11 = JSON.parse(localStorage.getItem("level11"))?.percent >= 100;
     const is12 = JSON.parse(localStorage.getItem("level12"))?.percent >= 100;
 
+    function unlock(levelNum, className) {
+      const el = document.getElementById(`level${levelNum}`);
+      if (!el) return;
+
+      el.classList.add("unlocked", className);
+      el.classList.remove("locked");
+      const link = el.querySelector("a");
+      if (link) {
+        link.setAttribute("href", `level${levelNum}.html`);
+        link.style.pointerEvents = "auto";
+        link.style.cursor = "pointer";
+        link.style.color = "#0ff";
+        link.removeAttribute("onclick");
+      }
+      showProgress(`level${levelNum}`, `level${levelNum}Progress`);
+    }
+
+    function enableLink(levelNum) {
+      const el = document.getElementById(`level${levelNum}`);
+      if (!el) return;
+      const link = el.querySelector("a");
+      if (link) {
+        link.style.pointerEvents = "auto";
+        link.style.cursor = "pointer";
+        link.style.color = "#0ff";
+        link.removeAttribute("onclick");
+      }
+    }
+
+    // Разблокировка по условиям
     if (is1 && is3) unlock(8, "hard");
     if (is2 && is4) unlock(9, "veryhard");
     if (is6 && is7) unlock(10, "nightmare");
     if (is8 && is9) unlock(11, "nightmare");
     if (is10) unlock(12, "nightmare");
     if (is11 && is12) unlock(13, "nightmare");
-  }
 
-  function unlock(levelNum, className) {
-    const el = document.getElementById(`level${levelNum}`);
-    el.classList.add("unlocked", className);
-    el.classList.remove("locked");
-    const link = el.querySelector("a");
-    link.setAttribute("href", `level${levelNum}.html`);
-    link.removeAttribute("onclick");
-    showProgress(`level${levelNum}`, `level${levelNum}Progress`);
+    // Разрешаем клик по первым 7 уровням
+    for (let i = 1; i <= 7; i++) {
+      enableLink(i);
+    }
   }
 
   unlockLevels();
+
+  // --- Анимация фона с кружками и квадратами ---
+  const bgCanvas = document.getElementById('bgCanvas');
+  const bgCtx = bgCanvas.getContext('2d');
+
+  function resizeBgCanvas() {
+    bgCanvas.width = window.innerWidth;
+    bgCanvas.height = window.innerHeight;
+  }
+  resizeBgCanvas();
+  window.addEventListener('resize', resizeBgCanvas);
+
+  class Shape {
+    constructor(x, y, size, type) {
+      this.x = x;
+      this.y = y;
+      this.size = size;
+      this.type = type;
+      this.angle = Math.random() * 2 * Math.PI;
+      this.speed = 0.001 + Math.random() * 0.002;
+      this.opacity = 0.1 + Math.random() * 0.3;
+      this.opacityDirection = 1;
+      this.colorBase = [0, 255, 255];
+    }
+
+    update() {
+      this.angle += this.speed;
+      this.opacity += this.opacityDirection * 0.005;
+      if (this.opacity >= 0.4) this.opacityDirection = -1;
+      else if (this.opacity <= 0.1) this.opacityDirection = 1;
+    }
+
+    draw(ctx) {
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(this.angle);
+      ctx.globalAlpha = this.opacity;
+
+      // Свечение
+      ctx.shadowColor = `rgba(${this.colorBase[0]}, ${this.colorBase[1]}, ${this.colorBase[2]}, 0.7)`;
+      ctx.shadowBlur = 15;
+
+      ctx.fillStyle = `rgba(${this.colorBase[0]}, ${this.colorBase[1]}, ${this.colorBase[2]}, 1)`;
+
+      if (this.type === 'circle') {
+        ctx.beginPath();
+        ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (this.type === 'square') {
+        ctx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size);
+      }
+
+      ctx.restore();
+    }
+  }
+
+  const shapes = [];
+  for (let i = 0; i < 15; i++) {
+    shapes.push(new Shape(Math.random() * bgCanvas.width, Math.random() * bgCanvas.height, 20 + Math.random() * 15, 'circle'));
+    shapes.push(new Shape(Math.random() * bgCanvas.width, Math.random() * bgCanvas.height, 20 + Math.random() * 15, 'square'));
+  }
+
+  function animateBg() {
+    bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+    shapes.forEach(shape => {
+      shape.update();
+      shape.draw(bgCtx);
+    });
+    requestAnimationFrame(animateBg);
+  }
+  animateBg();
 </script>
+
 </body>
 </html>

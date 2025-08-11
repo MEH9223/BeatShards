@@ -1,14 +1,61 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>🏆 Достижения</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
+    /* Фон с плавным переливом градиента */
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: monospace;
+      color: #0f0;
+      background: linear-gradient(135deg, #000, #111, #000);
+      background-size: 400% 400%;
+      animation: backgroundMove 20s ease infinite;
+      overflow-x: hidden;
+      position: relative;
+      min-height: 100vh;
+    }
+    @keyframes backgroundMove {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* Контейнер для вращающихся квадратов */
+    #animatedSquares {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      overflow: visible;
+      z-index: 0;
+    }
+
+    .square {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(45deg, rgba(0,255,255,0.1), rgba(0,255,255,0.25));
+      border: 1px solid rgba(0,255,255,0.3);
+      border-radius: 8px;
+      animation: rotateSquare linear infinite;
+      filter: drop-shadow(0 0 5px rgba(0,255,255,0.3));
+      mix-blend-mode: screen;
+    }
+
+    @keyframes rotateSquare {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Лоадер */
     #loader {
       position: fixed;
-      top: 0;
-      left: 0;
+      top: 0; left: 0;
       width: 100%;
       height: 100%;
       background: #000;
@@ -17,104 +64,102 @@
       align-items: center;
       z-index: 9999;
     }
-
     #loader::after {
       content: "Загрузка...";
       font-size: 24px;
       color: #0ff;
       animation: blink 1s infinite;
+      text-shadow: 0 0 10px #0ff;
     }
-
     @keyframes blink {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.4; }
     }
 
-    body {
-      background: linear-gradient(160deg, #000 0%, #020 100%);
-      color: #0f0;
-      font-family: monospace;
-      padding: 20px;
-    }
-
-    h1 {
-      text-align: center;
-      font-size: 36px;
-      color: #0f0;
-      text-shadow: 0 0 10px #0f0, 0 0 20px #0f0;
-      margin-bottom: 30px;
-    }
-
+    /* Навигация */
     .nav {
       text-align: center;
       margin-bottom: 30px;
+      position: relative;
+      z-index: 10;
     }
-
     .nav a {
       color: #0ff;
       margin: 0 12px;
       text-decoration: none;
       font-weight: bold;
       font-size: 18px;
-      transition: 0.2s;
+      transition: 0.3s;
+      text-shadow: 0 0 6px #0ff;
+    }
+    .nav a:hover {
+      text-shadow: 0 0 12px #0ff;
     }
 
-    .nav a:hover {
-      text-shadow: 0 0 6px #0ff;
+    h1 {
+      text-align: center;
+      font-size: 40px;
+      color: #0f0;
+      text-shadow: 0 0 15px #0f0, 0 0 30px #0f0;
+      margin-bottom: 30px;
+      position: relative;
+      z-index: 10;
+    }
+
+    /* Достижения */
+    #achievementsContainer {
+      max-width: 480px;
+      margin: 0 auto 40px auto;
+      position: relative;
+      z-index: 10;
     }
 
     .achievement {
-      margin: 15px auto;
-      padding: 20px;
-      max-width: 450px;
+      background: rgba(0, 30, 0, 0.85);
       border-radius: 14px;
       border: 2px solid #0f0;
-      background: rgba(0, 30, 0, 0.8);
-      box-shadow: 0 0 15px #003300;
-      transition: 0.3s;
-      animation: fadeIn 0.5s forwards;
-      opacity: 0;
-      transform: translateY(10px);
-    }
-
-    .achievement.locked {
-      color: #444;
-      background: #111;
-      border-color: #222;
-      box-shadow: none;
-      text-shadow: none;
-    }
-
-    .achievement.unlocked {
-      border-color: lime;
-      background: #030;
-      box-shadow: 0 0 20px lime;
+      box-shadow: 0 0 20px rgba(0, 255, 0, 0.6);
       color: #ccffcc;
-    }
-
-    .achievement b {
+      margin: 15px 0;
+      padding: 20px 25px;
+      transition: background 0.3s, box-shadow 0.3s, transform 0.3s;
+      opacity: 0;
+      transform: translateY(15px);
+      animation: fadeInUp 0.5s forwards;
+      display: flex;
+      align-items: center;
+      gap: 12px;
       font-size: 18px;
-      color: #0f0;
     }
-
-    .achievement small {
-      display: block;
-      margin-top: 5px;
-      font-size: 14px;
-      color: #aaa;
+    .achievement.locked {
+      background: rgba(10, 10, 10, 0.6);
+      border-color: #444;
+      box-shadow: none;
+      color: #444;
+      filter: grayscale(70%);
+      cursor: default;
     }
-
-    .achievement.unlocked small {
-      color: #bfb;
+    .achievement.unlocked:hover {
+      background: rgba(0, 255, 0, 0.1);
+      box-shadow: 0 0 30px lime, 0 0 10px #0f0;
+      transform: translateY(0) scale(1.03);
+      cursor: default;
     }
-
-    .icon {
-      margin-right: 10px;
+    .achievement b {
+      font-weight: 700;
       font-size: 20px;
-      vertical-align: middle;
+      text-shadow: 0 0 5px #0f0;
+      min-width: 32px;
+      text-align: center;
+    }
+    .achievement small {
+      color: #afa;
+      font-size: 14px;
+      line-height: 1.2;
+      flex-grow: 1;
     }
 
-    @keyframes fadeIn {
+    @keyframes fadeInUp {
       to {
         opacity: 1;
         transform: translateY(0);
@@ -138,11 +183,14 @@
         padding: 10px;
       }
       h1 {
-        font-size: 26px;
+        font-size: 28px;
+      }
+      #achievementsContainer {
+        max-width: 95%;
       }
       .achievement {
-        max-width: 95%;
         font-size: 16px;
+        padding: 15px 20px;
       }
     }
   </style>
@@ -150,6 +198,8 @@
 <body>
 
   <div id="loader"></div>
+
+  <div id="animatedSquares"></div>
 
   <div class="nav">
     <a href="index.html">🎮 Уровни</a>
@@ -164,11 +214,36 @@
   <div id="secretTrigger" title="😏"></div>
 
   <script>
+    // Лоадер скрывается после загрузки
     window.addEventListener("load", () => {
       const loader = document.getElementById("loader");
       if (loader) loader.style.display = "none";
     });
 
+    // Создаём вращающиеся квадраты на фоне
+    const squaresContainer = document.getElementById("animatedSquares");
+    const squaresCount = 18;
+
+    for(let i=0; i<squaresCount; i++) {
+      const sq = document.createElement("div");
+      sq.className = "square";
+      // Случайное начальное положение по экрану
+      sq.style.top = Math.random() * 100 + "vh";
+      sq.style.left = Math.random() * 100 + "vw";
+      // Случайный размер от 30 до 80 px
+      const size = 30 + Math.random() * 50;
+      sq.style.width = size + "px";
+      sq.style.height = size + "px";
+      // Случайная скорость вращения от 20 до 60 секунд
+      sq.style.animationDuration = (20 + Math.random() * 40) + "s";
+      // Случайный delay чтобы не все стартовали одновременно
+      sq.style.animationDelay = (Math.random() * 20) + "s";
+      // Случайное направление вращения
+      if(Math.random() < 0.5) sq.style.animationDirection = "reverse";
+      squaresContainer.appendChild(sq);
+    }
+
+    // Обработка достижений
     const container = document.getElementById("achievementsContainer");
 
     let passedLevels = 0;
@@ -213,17 +288,18 @@
       const div = document.createElement("div");
       div.className = `achievement ${ach.unlocked ? "unlocked" : "locked"}`;
       div.style.animationDelay = `${index * 0.15}s`;
-      div.innerHTML = `<b class="icon">${ach.icon}</b> <b>${ach.title}</b><br><small>${ach.desc}</small>`;
+      div.innerHTML = `<b>${ach.icon}</b><small><b>${ach.title}</b><br>${ach.desc}</small>`;
       container.appendChild(div);
     });
 
-    // Секрет
+    // Секретное достижение
     const secretKey = "secretAchievementUnlocked";
 
     function showSecretAchievement() {
       const div = document.createElement("div");
       div.className = "achievement unlocked";
-      div.innerHTML = `<b class="icon">🧠</b> <b>Секрет найден!</b><br><small>Ты нашёл то, что скрыто от всех.</small>`;
+      div.style.animationDelay = `${achievements.length * 0.15 + 0.2}s`;
+      div.innerHTML = `<b>🧠</b><small><b>Секрет найден!</b><br>Ты нашёл то, что скрыто от всех.</small>`;
       container.appendChild(div);
     }
 
@@ -238,6 +314,5 @@
       }
     });
   </script>
-
 </body>
 </html>

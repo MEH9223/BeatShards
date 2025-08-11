@@ -5,10 +5,13 @@
   <title>Level 9</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    html, body { margin: 0; overflow: hidden; background: #111; }
+    html, body { margin: 0; overflow: hidden; background: #111; height: 100%; }
     body {
       background: url('bg9.jpg') no-repeat center center fixed;
       background-size: cover;
+      position: relative;
+      font-family: monospace;
+      color: white;
     }
     canvas { display: block; }
 
@@ -79,8 +82,8 @@
   <script>
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
-    canvas.width = innerWidth;
-    canvas.height = innerHeight;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
     const player = {
       x: canvas.width / 2,
@@ -103,8 +106,8 @@
     const keys = {};
     let joystick = { dx: 0, dy: 0 };
 
-    window.addEventListener('keydown', e => keys[e.key] = true);
-    window.addEventListener('keyup', e => keys[e.key] = false);
+    window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+    window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
     function isMobile() {
       return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent);
@@ -138,9 +141,35 @@
       }
     }
 
+    // --- Audio setup for visualizer ---
+    const audio = document.getElementById('music');
+    let audioCtx, analyser, source, dataArray;
+
+    function setupAudio() {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      source = audioCtx.createMediaElementSource(audio);
+      analyser = audioCtx.createAnalyser();
+      source.connect(analyser);
+      analyser.connect(audioCtx.destination);
+      analyser.fftSize = 256;
+      const bufferLength = analyser.frequencyBinCount;
+      dataArray = new Uint8Array(bufferLength);
+    }
+
+    function getAverageVolume() {
+      if (!analyser) return 0;
+      analyser.getByteFrequencyData(dataArray);
+      let sum = 0;
+      for (let i = 0; i < dataArray.length; i++) {
+        sum += dataArray[i];
+      }
+      return sum / dataArray.length / 255; // Normalize 0-1
+    }
+
+    // --- Gameplay update ---
     function update() {
-      const dx = ((keys['d'] || keys['ArrowRight']) ? 1 : 0) - ((keys['a'] || keys['ArrowLeft']) ? 1 : 0) + joystick.dx;
-      const dy = ((keys['s'] || keys['ArrowDown']) ? 1 : 0) - ((keys['w'] || keys['ArrowUp']) ? 1 : 0) + joystick.dy;
+      const dx = ((keys['d'] || keys['arrowright']) ? 1 : 0) - ((keys['a'] || keys['arrowleft']) ? 1 : 0) + joystick.dx;
+      const dy = ((keys['s'] || keys['arrowdown']) ? 1 : 0) - ((keys['w'] || keys['arrowup']) ? 1 : 0) + joystick.dy;
       player.x += dx * player.speed;
       player.y += dy * player.speed;
       player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
@@ -207,11 +236,30 @@
         player.invincible = false;
     }
 
+    // --- Draw everything ---
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (!player.invincible || Math.floor(Date.now() / 100) % 2 === 0)
-        ctx.fillStyle = 'cyan', ctx.fillRect(player.x, player.y, player.size, player.size);
 
+      // Визуализация звука — пульсирующие кольца в центре
+      const volume = getAverageVolume();
+      const maxRadius = Math.min(canvas.width, canvas.height) / 4;
+      const ringsCount = 5;
+      for (let i = 0; i < ringsCount; i++) {
+        const radius = maxRadius * (i + 1) / ringsCount * (0.7 + 0.3 * volume);
+        ctx.strokeStyle = `rgba(0, 255, 255, ${0.15 * (ringsCount - i)})`;
+        ctx.lineWidth = 2 + i;
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, canvas.height / 2, radius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Игрок
+      if (!player.invincible || Math.floor(Date.now() / 100) % 2 === 0) {
+        ctx.fillStyle = 'cyan';
+        ctx.fillRect(player.x, player.y, player.size, player.size);
+      }
+
+      // Пули
       bullets.forEach(b => {
         ctx.fillStyle =
           b.type === 'explosive' ? 'orange' :
@@ -233,6 +281,7 @@
         }
       });
 
+      // Лазеры
       lasers.forEach(l => {
         ctx.strokeStyle = l.safe ? 'blue' : 'red';
         ctx.lineWidth = 6;
@@ -260,6 +309,7 @@
       });
     }
 
+    // --- Спавн врагов ---
     function spawn(type) {
       const cx = canvas.width / 2, cy = canvas.height / 2;
       if (type === 'zigzag') {
@@ -283,7 +333,7 @@
           });
         }
       } else if (type === 'homing') {
-        bullets.push({ x: Math.random() * canvas.width, y: -10, r: 7, type: 'homing', start: Date.now(), life: 8000 });
+        bullets.push({ x: Math.random() * canvas.width, y: -10, r: 7, type: 'homing', start: Date.now(), life: 8000, dx: 0, dy: 0 });
       } else if (type === 'laser' || type === 'blueLaser') {
         const angle = Math.random() * Math.PI * 2;
         const length = Math.min(canvas.width, canvas.height);
@@ -303,8 +353,16 @@
       update();
       draw();
       document.getElementById('progressBar').style.width = Math.min(100, (t / DURATION) * 100) + '%';
-      if (player.lives <= 0) return alert('💀 Ты проиграл'), location.reload();
-      if (t >= DURATION) return alert('🎉 Победа!'), location.href = 'index.html';
+      if (player.lives <= 0) {
+        alert('💀 Ты проиграл');
+        location.reload();
+        return;
+      }
+      if (t >= DURATION) {
+        alert('🎉 Победа!');
+        location.href = 'index.html';
+        return;
+      }
       requestAnimationFrame(gameLoop);
     }
 
@@ -314,9 +372,20 @@
       level.push({ time: i, type: types[Math.floor(Math.random() * types.length)] });
     }
 
-    document.getElementById('music').play().catch(() => {});
-    startTime = Date.now();
-    gameLoop();
+    // Запускаем аудио и игру после первого пользовательского взаимодействия, чтобы избежать блокировок автозапуска звука
+    function startGame() {
+      if (!audioCtx) setupAudio();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      audio.play().catch(() => {});
+      startTime = Date.now();
+      gameLoop();
+
+      window.removeEventListener('click', startGame);
+      window.removeEventListener('keydown', startGame);
+    }
+
+    window.addEventListener('click', startGame);
+    window.addEventListener('keydown', startGame);
   </script>
 </body>
 </html>

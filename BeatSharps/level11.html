@@ -1,292 +1,481 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <title>Level 11 - Ужас x2 с проходами</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    html, body { margin: 0; overflow: hidden; background: black; }
-    canvas { display: block; }
-    #info, #progressContainer, #exitButton {
-      position: absolute;
-      z-index: 10;
-      font-family: monospace;
-      color: white;
-    }
-    #info { top: 10px; left: 10px; font-size: 20px; }
-    #progressContainer {
-      top: 10px;
-      right: 10px;
-      width: 200px;
-      height: 20px;
-      background: #444;
-      border: 1px solid white;
-    }
-    #progressBar {
-      height: 100%;
-      background: crimson;
-      width: 0%;
-    }
-    #exitButton {
-      bottom: 10px;
-      right: 10px;
-      padding: 5px 10px;
-      font-size: 12px;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid white;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    #exitButton:hover { background: rgba(255, 255, 255, 0.2); }
-    #joystick {
-      position: absolute;
-      bottom: 20px;
-      right: 20px;
-      width: 100px;
-      height: 100px;
-      background: rgba(255,255,255,0.05);
-      border: 2px solid white;
-      border-radius: 50%;
-      z-index: 10;
-      touch-action: none;
-    }
-    #stick {
-      width: 40px;
-      height: 40px;
-      background: red;
-      border-radius: 50%;
-      position: absolute;
-      top: 30px;
-      left: 30px;
-      transform: translate(0, 0);
-    }
-    @media (hover: hover) and (pointer: fine) {
-      #joystick { display: none; }
-    }
-  </style>
+<meta charset="UTF-8" />
+<title>Level 11</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+  html, body {
+    margin: 0;
+    overflow: hidden;
+    background: radial-gradient(circle at center, #0a001a, #000000 80%);
+  }
+  canvas {
+    display: block;
+    background: transparent;
+  }
+  #info, #progressContainer, #exitButton {
+    position: absolute;
+    z-index: 10;
+    font-family: monospace;
+    color: white;
+    user-select: none;
+  }
+  #info { top: 10px; left: 10px; font-size: 20px; }
+  #progressContainer {
+    top: 10px;
+    right: 10px;
+    width: 200px;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid white;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  #progressBar {
+    height: 100%;
+    background: crimson;
+    width: 0%;
+    box-shadow: 0 0 8px crimson;
+    transition: width 0.1s linear;
+  }
+  #exitButton {
+    bottom: 10px;
+    right: 10px;
+    padding: 5px 10px;
+    font-size: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid white;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  #exitButton:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  #joystick {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    width: 100px;
+    height: 100px;
+    background: rgba(255,255,255,0.05);
+    border: 2px solid white;
+    border-radius: 50%;
+    z-index: 10;
+    touch-action: none;
+  }
+  #stick {
+    width: 40px;
+    height: 40px;
+    background: crimson;
+    border-radius: 50%;
+    position: absolute;
+    top: 30px;
+    left: 30px;
+    transform: translate(0, 0);
+    box-shadow: 0 0 15px crimson;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    #joystick { display: none; }
+  }
+</style>
 </head>
 <body>
-  <div id="info">Жизни: 3</div>
+  <div id="info">Жизни:5</div>
   <div id="progressContainer"><div id="progressBar"></div></div>
   <div id="exitButton" onclick="location.href='index.html'">Выйти</div>
   <canvas id="game"></canvas>
   <div id="joystick"><div id="stick"></div></div>
   <audio id="music" src="undertale_089. SAVE the World.mp3" loop></audio>
-  <script>
-    const canvas = document.getElementById('game');
-    const ctx = canvas.getContext('2d');
-    canvas.width = innerWidth;
-    canvas.height = innerHeight;
+<script>
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
 
-    let bullets = [];
-    const level = [];
-    const info = document.getElementById('info');
-    const progressBar = document.getElementById('progressBar');
-    const music = document.getElementById('music');
+  let bullets = [];
+  const particles = [];
+  const level = [];
+  const info = document.getElementById('info');
+  const progressBar = document.getElementById('progressBar');
+  const music = document.getElementById('music');
 
-    let joystickX = 0, joystickY = 0;
-    const joystick = document.getElementById('joystick');
-    const stick = document.getElementById('stick');
-    let dragging = false;
-    let joyStart = { x: 0, y: 0 };
+  let joystickX = 0, joystickY = 0;
+  const joystick = document.getElementById('joystick');
+  const stick = document.getElementById('stick');
+  let dragging = false;
+  let joyStart = { x: 0, y: 0 };
 
-    joystick.addEventListener('touchstart', e => {
-      dragging = true;
-      const touch = e.touches[0];
-      joyStart = { x: touch.clientX, y: touch.clientY };
-    });
-    joystick.addEventListener('touchmove', e => {
-      if (!dragging) return;
-      const touch = e.touches[0];
-      const dx = touch.clientX - joyStart.x;
-      const dy = touch.clientY - joyStart.y;
-      const dist = Math.min(Math.hypot(dx, dy), 40);
-      const angle = Math.atan2(dy, dx);
-      const x = Math.cos(angle) * dist;
-      const y = Math.sin(angle) * dist;
-      stick.style.transform = `translate(${x}px, ${y}px)`;
-      joystickX = x / 40;
-      joystickY = y / 40;
-    });
-    joystick.addEventListener('touchend', () => {
-      dragging = false;
-      stick.style.transform = `translate(0, 0)`;
-      joystickX = joystickY = 0;
-    });
+  joystick.addEventListener('touchstart', e => {
+    dragging = true;
+    const touch = e.touches[0];
+    joyStart = { x: touch.clientX, y: touch.clientY };
+  });
+  joystick.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - joyStart.x;
+    const dy = touch.clientY - joyStart.y;
+    const dist = Math.min(Math.hypot(dx, dy), 40);
+    const angle = Math.atan2(dy, dx);
+    const x = Math.cos(angle) * dist;
+    const y = Math.sin(angle) * dist;
+    stick.style.transform = `translate(${x}px, ${y}px)`;
+    joystickX = x / 40;
+    joystickY = y / 40;
+  });
+  joystick.addEventListener('touchend', () => {
+    dragging = false;
+    stick.style.transform = `translate(0, 0)`;
+    joystickX = joystickY = 0;
+  });
 
-    const player = {
-      x: canvas.width / 2,
-      y: canvas.height / 2,
-      size: 30,
-      speed: 3,
-      lives: 3,
-      invincible: false,
-      lastHit: 0,
-      invincibleTime: 1000
+  const player = {
+    x: canvas.width / 2,
+    y: canvas.height / 2,
+    size: 30,
+    speed: 3,
+    lives: 5,
+    invincible: false,
+    lastHit: 0,
+    invincibleTime: 1000
+  };
+
+  const keys = {};
+  document.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+  document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+  const DURATION = 113; // 1 мин 53 сек
+  let startTime = 0;
+
+  function randomColor(type) {
+    const colors = {
+      spiral: '#fff',
+      raindrop: '#00ffff',
+      crossburst: '#ff4444',
+      cornerRain: '#bb55ff',
+      sideRain: '#ff7f00',
+      circleWave: '#7fff00',
+      targetBurst: '#ffff00'
     };
+    return colors[type] || '#fff';
+  }
 
-    const keys = {};
-    document.addEventListener('keydown', e => keys[e.key] = true);
-    document.addEventListener('keyup', e => keys[e.key] = false);
-
-    const DURATION = 113; // 1 мин 53 сек
-    let startTime = 0;
-
-    function randomColor(type) {
-      const colors = {
-        spiral: 'white',
-        raindrop: 'cyan',
-        crossburst: 'red',
-        cornerRain: 'violet',
-        sideRain: 'orange',
-        circleWave: 'lime',
-        targetBurst: 'yellow'
-      };
-      return colors[type] || 'white';
-    }
-
-    function spawn(type) {
-      const cx = canvas.width / 2;
-      const cy = canvas.height / 2;
-      const color = randomColor(type);
-
-      if (type === 'spiral') {
-        const gapIndex = Math.floor(Math.random() * 18);
-        for (let i = 0; i < 18; i++) {
-          if (i === gapIndex || i === (gapIndex + 1) % 18) continue;
-          const angle = (Math.PI * 2) * (i / 18);
-          bullets.push({ x: cx, y: cy, dx: Math.cos(angle) * 1.5, dy: Math.sin(angle) * 1.5, r: 4, color, spawn: Date.now(), life: 6000 });
-        }
-
-      } else if (type === 'raindrop') {
-        const skip = Math.floor(Math.random() * 10);
-        for (let i = 0; i < canvas.width; i += 50) {
-          if (Math.floor(i / 50) === skip) continue;
-          bullets.push({ x: i, y: -10, dx: 0, dy: 3.5, r: 5, color, spawn: Date.now(), life: 6000 });
-        }
-
-      } else if (type === 'crossburst') {
-        const skip = Math.random() < 0.5;
-        if (!skip) {
-          for (let i = -1; i <= 1; i += 2) {
-            bullets.push({ x: cx, y: cy, dx: i * 4, dy: 0, r: 5, color, spawn: Date.now(), life: 5000 });
-            bullets.push({ x: cx, y: cy, dx: 0, dy: i * 4, r: 5, color, spawn: Date.now(), life: 5000 });
-          }
-        }
-
-      } else if (type === 'cornerRain') {
-        for (let i = 0; i < 4; i++) {
-          const x = i % 2 === 0 ? 0 : canvas.width;
-          const y = i < 2 ? 0 : canvas.height;
-          const dx = (canvas.width / 2 - x) / 60;
-          const dy = (canvas.height / 2 - y) / 60;
-          for (let j = 0; j < 2; j++) {
-            bullets.push({ x, y, dx, dy, r: 4, color, spawn: Date.now(), life: 5000 });
-          }
-        }
-
-      } else if (type === 'sideRain') {
-        const skip = Math.floor(Math.random() * 6);
-        for (let i = 0; i < canvas.height; i += 50) {
-          if (Math.floor(i / 50) === skip) continue;
-          bullets.push({ x: -10, y: i, dx: 3.5, dy: 0, r: 6, color, spawn: Date.now(), life: 6000 });
-        }
-
-      } else if (type === 'circleWave') {
-        const gapIndex = Math.floor(Math.random() * 18);
-        for (let i = 0; i < 18; i++) {
-          if (i === gapIndex) continue;
-          const angle = (Math.PI * 2) * (i / 18);
-          const speed = 1.5 + Math.random() * 1.5;
-          bullets.push({ x: cx, y: cy, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, r: 4, color, spawn: Date.now(), life: 6000 });
-        }
-
-      } else if (type === 'targetBurst') {
-        const count = 2 + Math.floor(Math.random() * 2);
-        for (let i = 0; i < count; i++) {
-          const angle = Math.atan2(player.y - cy, player.x - cx) + (Math.random() - 0.5);
-          bullets.push({ x: cx, y: cy, dx: Math.cos(angle) * 3.5, dy: Math.sin(angle) * 3.5, r: 4, color, spawn: Date.now(), life: 5000 });
-        }
-      }
-    }
-
-    const attackTypes = ['spiral', 'raindrop', 'crossburst', 'cornerRain', 'sideRain', 'circleWave', 'targetBurst'];
-    for (let i = 20; i < DURATION; i += 2) {
-      const type1 = attackTypes[Math.floor(Math.random() * attackTypes.length)];
-      const type2 = attackTypes[Math.floor(Math.random() * attackTypes.length)];
-      level.push({ time: i, type: type1, triggered: false });
-      level.push({ time: i, type: type2, triggered: false });
-    }
-
-    function update() {
-      let dx = joystickX || 0;
-      let dy = joystickY || 0;
-      if (keys['ArrowUp'] || keys['w']) dy = -1;
-      if (keys['ArrowDown'] || keys['s']) dy = 1;
-      if (keys['ArrowLeft'] || keys['a']) dx = -1;
-      if (keys['ArrowRight'] || keys['d']) dx = 1;
-
-      player.x += dx * player.speed;
-      player.y += dy * player.speed;
-
-      bullets = bullets.filter(b => Date.now() - b.spawn <= b.life);
-      bullets.forEach(b => {
-        b.x += b.dx;
-        b.y += b.dy;
-        const dist = Math.hypot(player.x - b.x, player.y - b.y);
-        if (dist < player.size && !player.invincible) {
-          player.lives--;
-          player.invincible = true;
-          player.lastHit = Date.now();
-          info.textContent = 'Жизни: ' + player.lives;
-        }
+  function createParticles(x, y, color) {
+    for(let i=0; i<6; i++) {
+      particles.push({
+        x,
+        y,
+        r: Math.random()*1.5 + 0.5,
+        dx: (Math.random()-0.5)*1.5,
+        dy: (Math.random()-0.5)*1.5,
+        alpha: 1,
+        decay: 0.03 + Math.random()*0.02,
+        color
       });
+    }
+  }
 
-      if (player.invincible && Date.now() - player.lastHit > player.invincibleTime)
-        player.invincible = false;
+  function spawn(type) {
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const color = randomColor(type);
 
-      player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
-      player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+    if (type === 'spiral') {
+      const gapIndex = Math.floor(Math.random() * 18);
+      for (let i = 0; i < 18; i++) {
+        if (i === gapIndex || i === (gapIndex + 1) % 18) continue;
+        const angle = (Math.PI * 2) * (i / 18);
+        bullets.push({
+          x: cx,
+          y: cy,
+          dx: Math.cos(angle) * 1.5,
+          dy: Math.sin(angle) * 1.5,
+          r: 5,
+          color,
+          spawn: Date.now(),
+          life: 6000
+        });
+        createParticles(cx, cy, color);
+      }
+    } else if (type === 'raindrop') {
+      const skip = Math.floor(Math.random() * 10);
+      for (let i = 0; i < canvas.width; i += 50) {
+        if (Math.floor(i / 50) === skip) continue;
+        bullets.push({
+          x: i,
+          y: -10,
+          dx: 0,
+          dy: 3.5,
+          r: 5,
+          color,
+          spawn: Date.now(),
+          life: 6000
+        });
+        createParticles(i, -10, color);
+      }
+    } else if (type === 'crossburst') {
+      const skip = Math.random() < 0.5;
+      if (!skip) {
+        for (let i = -1; i <= 1; i += 2) {
+          bullets.push({
+            x: cx,
+            y: cy,
+            dx: i * 4,
+            dy: 0,
+            r: 5,
+            color,
+            spawn: Date.now(),
+            life: 5000
+          });
+          bullets.push({
+            x: cx,
+            y: cy,
+            dx: 0,
+            dy: i * 4,
+            r: 5,
+            color,
+            spawn: Date.now(),
+            life: 5000
+          });
+          createParticles(cx, cy, color);
+        }
+      }
+    } else if (type === 'cornerRain') {
+      for (let i = 0; i < 4; i++) {
+        const x = i % 2 === 0 ? 0 : canvas.width;
+        const y = i < 2 ? 0 : canvas.height;
+        const dx = (canvas.width / 2 - x) / 60;
+        const dy = (canvas.height / 2 - y) / 60;
+        for (let j = 0; j < 2; j++) {
+          bullets.push({
+            x,
+            y,
+            dx,
+            dy,
+            r: 5,
+            color,
+            spawn: Date.now(),
+            life: 5000
+          });
+          createParticles(x, y, color);
+        }
+      }
+    } else if (type === 'sideRain') {
+      const skip = Math.floor(Math.random() * 6);
+      for (let i = 0; i < canvas.height; i += 50) {
+        if (Math.floor(i / 50) === skip) continue;
+        bullets.push({
+          x: -10,
+          y: i,
+          dx: 3.5,
+          dy: 0,
+          r: 6,
+          color,
+          spawn: Date.now(),
+          life: 6000
+        });
+        createParticles(-10, i, color);
+      }
+    } else if (type === 'circleWave') {
+      const gapIndex = Math.floor(Math.random() * 18);
+      for (let i = 0; i < 18; i++) {
+        if (i === gapIndex) continue;
+        const angle = (Math.PI * 2) * (i / 18);
+        const speed = 1.5 + Math.random() * 1.5;
+        bullets.push({
+          x: cx,
+          y: cy,
+          dx: Math.cos(angle) * speed,
+          dy: Math.sin(angle) * speed,
+          r: 5,
+          color,
+          spawn: Date.now(),
+          life: 6000
+        });
+        createParticles(cx, cy, color);
+      }
+    } else if (type === 'targetBurst') {
+      const count = 2 + Math.floor(Math.random() * 2);
+      for (let i = 0; i < count; i++) {
+        const angle = Math.atan2(player.y - cy, player.x - cx) + (Math.random() - 0.5);
+        bullets.push({
+          x: cx,
+          y: cy,
+          dx: Math.cos(angle) * 3.5,
+          dy: Math.sin(angle) * 3.5,
+          r: 5,
+          color,
+          spawn: Date.now(),
+          life: 5000
+        });
+        createParticles(cx, cy, color);
+      }
+    }
+  }
+
+  const attackTypes = ['spiral', 'raindrop', 'crossburst', 'cornerRain', 'sideRain', 'circleWave', 'targetBurst'];
+  for (let i = 20; i < DURATION; i += 2) {
+    const type1 = attackTypes[Math.floor(Math.random() * attackTypes.length)];
+    const type2 = attackTypes[Math.floor(Math.random() * attackTypes.length)];
+    level.push({ time: i, type: type1, triggered: false });
+    level.push({ time: i, type: type2, triggered: false });
+  }
+
+  function update() {
+    let dx = joystickX || 0;
+    let dy = joystickY || 0;
+    if (keys['arrowup'] || keys['w']) dy = -1;
+    if (keys['arrowdown'] || keys['s']) dy = 1;
+    if (keys['arrowleft'] || keys['a']) dx = -1;
+    if (keys['arrowright'] || keys['d']) dx = 1;
+
+    // Normalize diagonal speed
+    if (dx !== 0 && dy !== 0) {
+      dx *= Math.SQRT1_2;
+      dy *= Math.SQRT1_2;
     }
 
-    function draw(t) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (!player.invincible || Math.floor(Date.now() / 100) % 2 === 0) {
-        ctx.fillStyle = 'red';
-        ctx.fillRect(player.x, player.y, player.size, player.size);
-      }
+    player.x += dx * player.speed;
+    player.y += dy * player.speed;
 
-      bullets.forEach(b => {
-        ctx.fillStyle = b.color;
+    bullets = bullets.filter(b => Date.now() - b.spawn <= b.life);
+    bullets.forEach(b => {
+      b.x += b.dx;
+      b.y += b.dy;
+      const dist = Math.hypot(player.x + player.size/2 - b.x, player.y + player.size/2 - b.y);
+      if (dist < player.size / 1.8 && !player.invincible) {
+        player.lives--;
+        player.invincible = true;
+        player.lastHit = Date.now();
+        info.textContent = 'Жизни: ' + player.lives;
+      }
+    });
+
+    if (player.invincible && Date.now() - player.lastHit > player.invincibleTime)
+      player.invincible = false;
+
+    player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
+    player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+
+    // Update particles
+    for(let i = particles.length -1; i>=0; i--) {
+      const p = particles[i];
+      p.x += p.dx;
+      p.y += p.dy;
+      p.alpha -= p.decay;
+      if(p.alpha <= 0) particles.splice(i, 1);
+    }
+  }
+
+  function draw(t) {
+    // Рисуем фон с легкой анимацией волн
+    const gradient = ctx.createRadialGradient(
+      canvas.width/2, canvas.height/2,
+      canvas.width/10,
+      canvas.width/2, canvas.height/2,
+      canvas.width/2);
+    const wave = Math.sin(t*2)*0.2 + 0.8;
+    gradient.addColorStop(0, `rgba(10,0,26,${wave})`);
+    gradient.addColorStop(1, 'rgba(0,0,0,1)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    // Рисуем светящийся эффект вокруг игрока (пульсация)
+    const pulse = (Math.sin(t*10) + 1) / 2 * 0.6 + 0.4; // 0.4-1.0
+    const glowRadius = player.size * 1.8 + pulse * 15;
+
+    const cx = player.x + player.size/2;
+    const cy = player.y + player.size/2;
+
+    const glowGradient = ctx.createRadialGradient(cx, cy, player.size/2, cx, cy, glowRadius);
+    glowGradient.addColorStop(0, `rgba(255, 0, 0, ${pulse * 0.6})`);
+    glowGradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+    ctx.fillStyle = glowGradient;
+    ctx.beginPath();
+    ctx.arc(cx, cy, glowRadius, 0, Math.PI*2);
+    ctx.fill();
+
+    // Рисуем игрока с ярким центральным цветом и мягкой тенью
+    ctx.fillStyle = 'crimson';
+    ctx.shadowColor = 'rgba(255, 0, 0, 0.8)';
+    ctx.shadowBlur = 15;
+    if (!player.invincible || Math.floor(Date.now() / 100) % 2 === 0) {
+      ctx.fillRect(player.x, player.y, player.size, player.size);
+    }
+    ctx.shadowBlur = 0;
+
+    // Рисуем пули с эффектом свечения и "следом"
+    bullets.forEach(b => {
+      // Свечение
+      const bulletGlow = ctx.createRadialGradient(b.x, b.y, b.r/2, b.x, b.y, b.r*2);
+      bulletGlow.addColorStop(0, b.color);
+      bulletGlow.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = bulletGlow;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r*1.4, 0, Math.PI*2);
+      ctx.fill();
+
+      // Основное тело
+      ctx.fillStyle = b.color;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
+      ctx.fill();
+
+      // След (тень) с прозрачностью
+      ctx.fillStyle = `rgba(255, 255, 255, 0.15)`;
+      for(let i=1; i<=3; i++) {
         ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.arc(b.x - b.dx*i*2, b.y - b.dy*i*2, b.r * (0.8 - i*0.2), 0, Math.PI*2);
         ctx.fill();
-      });
+      }
+    });
+
+    // Частицы вокруг пуль
+    particles.forEach(p => {
+      ctx.fillStyle = `rgba(255, 0, 0, ${p.alpha})`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fill();
+    });
+  }
+
+  function gameLoop() {
+    const t = (Date.now() - startTime) / 1000;
+
+    level.forEach(e => {
+      if (!e.triggered && t >= e.time) {
+        spawn(e.type);
+        e.triggered = true;
+      }
+    });
+
+    update();
+    draw(t);
+
+    progressBar.style.width = Math.min(100, (t / DURATION) * 100) + '%';
+
+    if (player.lives <= 0) {
+      alert('💀 Поражение!');
+      location.reload();
+      return;
     }
 
-    function gameLoop() {
-      const t = (Date.now() - startTime) / 1000;
-      level.forEach(e => {
-        if (!e.triggered && t >= e.time) {
-          spawn(e.type);
-          e.triggered = true;
-        }
-      });
-
-      update();
-      draw(t);
-      progressBar.style.width = Math.min(100, (t / DURATION) * 100) + '%';
-      if (player.lives <= 0) return alert('💀 Поражение!'), location.reload();
-      if (t >= DURATION) return alert('🏆 Победа!'), location.href = 'index.html';
-      requestAnimationFrame(gameLoop);
+    if (t >= DURATION) {
+      alert('🏆 Победа!');
+      location.href = 'index.html';
+      return;
     }
 
-    document.body.addEventListener('click', () => {
-      music.play().catch(() => {});
-    }, { once: true });
-
-    startTime = Date.now();
     requestAnimationFrame(gameLoop);
-  </script>
+  }
+
+  document.body.addEventListener('click', () => {
+    music.play().catch(() => {});
+  }, { once: true });
+
+  startTime = Date.now();
+  requestAnimationFrame(gameLoop);
+</script>
 </body>
 </html>

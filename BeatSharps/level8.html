@@ -16,6 +16,7 @@
       z-index: 10;
       font-family: monospace;
       color: white;
+      user-select: none;
     }
     #info { top: 10px; left: 10px; font-size: 20px; }
     #progressContainer {
@@ -30,6 +31,7 @@
       height: 100%;
       background: cyan;
       width: 0%;
+      transition: width 0.1s ease;
     }
     #exitButton {
       bottom: 10px;
@@ -40,6 +42,7 @@
       border: 1px solid white;
       border-radius: 5px;
       cursor: pointer;
+      user-select: none;
     }
     #exitButton:hover { background: rgba(255, 255, 255, 0.2); }
     #joystick {
@@ -60,6 +63,7 @@
       position: absolute;
       top: 30px;
       left: 30px;
+      user-select: none;
     }
     @media (hover: hover) and (pointer: fine) {
       #joystick { display: none; }
@@ -125,49 +129,87 @@
     window.addEventListener('keydown', e => keys[e.key] = true);
     window.addEventListener('keyup', e => keys[e.key] = false);
 
+    // Функция для "дергания" — небольшие случайные прыжки
+    function jitter(value, intensity=2) {
+      return value + (Math.random() - 0.5) * intensity;
+    }
+
     function update() {
+      // Движение с небольшими случайными рывками
       const dx = ((keys['d'] || keys['ArrowRight']) ? 1 : 0) - ((keys['a'] || keys['ArrowLeft']) ? 1 : 0) + joystickX;
       const dy = ((keys['s'] || keys['ArrowDown']) ? 1 : 0) - ((keys['w'] || keys['ArrowUp']) ? 1 : 0) + joystickY;
       player.x += dx * player.speed;
       player.y += dy * player.speed;
+      // Ограничения по экрану
       player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
       player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
 
       const now = Date.now();
+
+      // Обновляем пули
       bullets.forEach((b, i) => {
         if (b.type === 'homing') {
-          const angle = Math.atan2(player.y - b.y, player.x - b.x);
+          // Немного дерганое наведение на игрока
+          const angle = Math.atan2(player.y - b.y + (Math.random() - 0.5)*20, player.x - b.x + (Math.random() - 0.5)*20);
           b.dx = Math.cos(angle) * b.speed;
           b.dy = Math.sin(angle) * b.speed;
           if (now - b.spawnTime > 10000) bullets.splice(i, 1);
         }
-        b.x += b.dx;
-        b.y += b.dy;
+        b.x += b.dx + (Math.random() - 0.5) * 1.5; // дерганье пули
+        b.y += b.dy + (Math.random() - 0.5) * 1.5;
+        // Удаление за пределами
         if (b.x < -50 || b.x > canvas.width + 50 || b.y < -50 || b.y > canvas.height + 50) bullets.splice(i, 1);
       });
 
-      lasers.forEach(l => {
-        l.angle += 0.01;
-        if (Date.now() - l.spawnTime > 4000) lasers.splice(lasers.indexOf(l), 1);
+      // Обновляем лазеры
+      lasers.forEach((l, i) => {
+        l.angle += 0.02 + (Math.random() - 0.5) * 0.02; // слегка дергаются
+        if (now - l.spawnTime > 4000) lasers.splice(i, 1);
       });
 
+      // Проверка столкновений
       bullets.forEach((b, i) => {
-        const dist = Math.hypot(player.x + 15 - b.x, player.y + 15 - b.y);
-        if (dist < b.r + 15 && !player.invincible) {
+        const dist = Math.hypot(player.x + player.size/2 - b.x, player.y + player.size/2 - b.y);
+        if (dist < b.r + player.size/2 && !player.invincible) {
           player.lives--;
           player.invincible = true;
-          player.lastHit = Date.now();
+          player.lastHit = now;
           bullets.splice(i, 1);
           document.getElementById('info').textContent = 'Жизни: ' + player.lives;
         }
       });
 
-      if (player.invincible && Date.now() - player.lastHit > player.invincibleTime) player.invincible = false;
-      warnings.forEach((w, i) => { if (Date.now() - w.start > 1500) warnings.splice(i, 1); });
+      lasers.forEach(l => {
+        const angleToPlayer = Math.atan2(player.y - l.y, player.x - l.x);
+        const diff = Math.abs((l.angle % (Math.PI * 2)) - angleToPlayer);
+        if (diff < 0.3 && Math.hypot(player.x - l.x, player.y - l.y) < l.length && !player.invincible) {
+          player.lives--;
+          player.invincible = true;
+          player.lastHit = now;
+          document.getElementById('info').textContent = 'Жизни: ' + player.lives;
+        }
+      });
+
+      // Снимаем неуязвимость через время
+      if (player.invincible && now - player.lastHit > player.invincibleTime) player.invincible = false;
+
+      // Удаляем старые предупреждения
+      warnings.forEach((w, i) => { if (now - w.start > 1500) warnings.splice(i, 1); });
     }
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Яркие случайные цветные квадраты — хаотичные вспышки
+      for (let i = 0; i < 6; i++) {
+        ctx.fillStyle = `hsl(${Math.random() * 360}, 100%, 60%)`;
+        const size = 8 + Math.random() * 15;
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        ctx.fillRect(x, y, size, size);
+      }
+
+      // Рисуем предупреждения
       warnings.forEach(w => {
         ctx.strokeStyle = 'yellow';
         ctx.lineWidth = 6;
@@ -176,22 +218,37 @@
         ctx.lineTo(w.x2, w.y2);
         ctx.stroke();
       });
+
+      // Рисуем игрока с "дерганьем" (случайное смещение ±3px)
       if (!player.invincible || Math.floor(Date.now() / 100) % 2 === 0) {
-        ctx.fillStyle = 'cyan';
-        ctx.fillRect(player.x, player.y, player.size, player.size);
+        const jitterX = jitter(player.x, 6);
+        const jitterY = jitter(player.y, 6);
+        const color = `hsl(${Math.random() * 360}, 100%, 60%)`;
+        ctx.fillStyle = color;
+        ctx.fillRect(jitterX, jitterY, player.size, player.size);
       }
+
+      // Рисуем пули — разноцветные, с дерганьем
       bullets.forEach(b => {
-        ctx.fillStyle = b.type === 'homing' ? 'red' : 'magenta';
+        const col = b.type === 'homing' ? `hsl(${Math.random() * 360}, 100%, 50%)` : `hsl(${Math.random() * 360}, 80%, 60%)`;
+        ctx.fillStyle = col;
+        const jitterX = b.x + (Math.random() - 0.5) * 4;
+        const jitterY = b.y + (Math.random() - 0.5) * 4;
         ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.arc(jitterX, jitterY, b.r, 0, Math.PI * 2);
         ctx.fill();
       });
+
+      // Рисуем лазеры — дерганые красные линии
       lasers.forEach(l => {
-        ctx.strokeStyle = 'red';
-        ctx.lineWidth = 6;
+        ctx.strokeStyle = `hsl(${Math.random() * 10}, 100%, 50%)`;
+        ctx.lineWidth = 6 + Math.random() * 3;
         ctx.beginPath();
-        ctx.moveTo(l.x, l.y);
-        ctx.lineTo(l.x + Math.cos(l.angle) * l.length, l.y + Math.sin(l.angle) * l.length);
+        ctx.moveTo(l.x + (Math.random() - 0.5)*6, l.y + (Math.random() - 0.5)*6);
+        ctx.lineTo(
+          l.x + Math.cos(l.angle) * l.length + (Math.random() - 0.5)*6,
+          l.y + Math.sin(l.angle) * l.length + (Math.random() - 0.5)*6
+        );
         ctx.stroke();
       });
     }
@@ -222,10 +279,20 @@
     function gameLoop() {
       const t = (Date.now() - startTime) / 1000;
       level.forEach(e => { if (!e.triggered && t >= e.time) { spawn(e.type); e.triggered = true; } });
-      update(); draw();
+      update();
+      draw();
       document.getElementById('progressBar').style.width = Math.min(100, (t / DURATION) * 100) + '%';
-      if (player.lives <= 0) return alert('💀 Ты проиграл'), location.reload();
-      if (t >= DURATION) return alert('🎉 Победа!'), location.href = 'index.html';
+
+      if (player.lives <= 0) {
+        alert('💀 Ты проиграл!');
+        location.reload();
+        return;
+      }
+      if (t >= DURATION) {
+        alert('🎉 Победа!');
+        location.href = 'index.html';
+        return;
+      }
       requestAnimationFrame(gameLoop);
     }
 
@@ -234,9 +301,19 @@
       level.push({ time: i, type: types[Math.floor(Math.random() * types.length)] });
     }
 
-    document.getElementById('music').play().catch(() => {});
-    startTime = Date.now();
-    gameLoop();
+    // Запускаем музыку и игру после клика или нажатия
+    const music = document.getElementById('music');
+    function startGame() {
+      music.play().catch(() => {});
+      startTime = Date.now();
+      gameLoop();
+      window.removeEventListener('keydown', startGame);
+      window.removeEventListener('mousedown', startGame);
+      window.removeEventListener('touchstart', startGame);
+    }
+    window.addEventListener('keydown', startGame);
+    window.addEventListener('mousedown', startGame);
+    window.addEventListener('touchstart', startGame);
   </script>
 </body>
 </html>

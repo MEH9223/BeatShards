@@ -44,27 +44,86 @@
     const ctx = canvas.getContext('2d');
     canvas.width = innerWidth;
     canvas.height = innerHeight;
-
+  
     const DURATION = 130;
     const player = {
       x: canvas.width / 2, y: canvas.height - 60,
       size: 30, speed: 3, lives: 5,
       invincible: false, lastHit: 0, invincibleTime: 1500
     };
-
+  
     const bullets = [], level = [];
     const info = document.getElementById('info');
     const progressBar = document.getElementById('progressBar');
     const music = document.getElementById('music');
-
+  
+    const hitSound = new Audio('hit_sound.mp3'); 
+  
+    // Определение мобильного устройства
+    const isMobile = (() => {
+      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    })();
+  
     const keys = {};
+  
+    // Джойстик для мобильных
+    let joystick = null;
+    if (isMobile) {
+      joystick = {
+        active: false,
+        startX: 0,
+        startY: 0,
+        dx: 0,
+        dy: 0,
+        maxDistance: 50
+      };
+  
+      canvas.addEventListener('pointerdown', e => {
+        joystick.active = true;
+        joystick.startX = e.clientX;
+        joystick.startY = e.clientY;
+      });
+  
+      canvas.addEventListener('pointermove', e => {
+        if (!joystick.active) return;
+        joystick.dx = e.clientX - joystick.startX;
+        joystick.dy = e.clientY - joystick.startY;
+  
+        const dist = Math.hypot(joystick.dx, joystick.dy);
+        if (dist > joystick.maxDistance) {
+          const angle = Math.atan2(joystick.dy, joystick.dx);
+          joystick.dx = Math.cos(angle) * joystick.maxDistance;
+          joystick.dy = Math.sin(angle) * joystick.maxDistance;
+        }
+      });
+  
+      canvas.addEventListener('pointerup', e => {
+        joystick.active = false;
+        joystick.dx = 0;
+        joystick.dy = 0;
+      });
+    }
+  
     document.addEventListener('keydown', e => keys[e.key] = true);
     document.addEventListener('keyup', e => keys[e.key] = false);
-
+  
+    // Эффект дрожания экрана
+    let shakeDuration = 0;
+    let shakeMagnitude = 8;
+  
+    function applyShake() {
+      if (shakeDuration > 0) {
+        const shakeX = (Math.random() - 0.5) * shakeMagnitude;
+        const shakeY = (Math.random() - 0.5) * shakeMagnitude;
+        ctx.translate(shakeX, shakeY);
+        shakeDuration--;
+      }
+    }
+  
     function spawn(type, currentTime) {
       const add = (b) => { b.alpha = 0; bullets.push(b); };
       const cx = canvas.width / 2, cy = canvas.height / 2;
-
+  
       if (type === 'charaSlashRain') {
         const gap = Math.floor(Math.random() * (canvas.width / 60));
         for (let x = 0; x < canvas.width; x += 60) {
@@ -124,7 +183,7 @@
         }
       }
     }
-
+  
     const attackSchedule = [];
     for (let t = 3; t < DURATION; t += 2.2) {
       let type;
@@ -139,14 +198,14 @@
       }
       attackSchedule.push({ time: t, type, triggered: false });
     }
-
+  
     let startTime = Date.now();
     let finalTextShown = false;
     let lastHitFlash = 0;
-
+  
     function update() {
       const t = (Date.now() - startTime) / 1000;
-
+  
       if (t >= 100) canvas.style.background = 'radial-gradient(crimson, black)';
       if (t >= 125 && !finalTextShown) {
         finalTextShown = true;
@@ -155,23 +214,28 @@
         msg.textContent = '(=';
         document.body.appendChild(msg);
       }
-
+  
       let dx = 0, dy = 0;
       if (keys['ArrowUp'] || keys['w']) dy = -1;
       if (keys['ArrowDown'] || keys['s']) dy = 1;
       if (keys['ArrowLeft'] || keys['a']) dx = -1;
       if (keys['ArrowRight'] || keys['d']) dx = 1;
-
+  
+      if (isMobile && joystick && joystick.active) {
+        dx = joystick.dx / joystick.maxDistance;
+        dy = joystick.dy / joystick.maxDistance;
+      }
+  
       player.x += dx * player.speed;
       player.y += dy * player.speed;
       player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
       player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
-
+  
       bullets.forEach(b => {
         b.x += b.dx;
         b.y += b.dy;
         if (b.alpha < 1) b.alpha += 0.05;
-
+  
         let dist = Math.hypot(player.x + player.size / 2 - b.x, player.y + player.size / 2 - b.y);
         if (dist < player.size && !player.invincible) {
           player.lives--;
@@ -179,26 +243,49 @@
           player.lastHit = Date.now();
           lastHitFlash = Date.now();
           info.textContent = 'Жизни: ' + player.lives;
+          shakeDuration = 15;
+          hitSound.currentTime = 0;
+          hitSound.play().catch(() => {});
         }
       });
-
+  
       if (player.invincible && Date.now() - player.lastHit > player.invincibleTime)
         player.invincible = false;
     }
-
+  
+    function drawJoystick() {
+      if (!joystick || !joystick.active) return;
+      ctx.save();
+      ctx.globalAlpha = 0.4;
+      ctx.beginPath();
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 2;
+      ctx.arc(joystick.startX, joystick.startY, joystick.maxDistance, 0, Math.PI * 2);
+      ctx.stroke();
+  
+      ctx.beginPath();
+      ctx.fillStyle = 'white';
+      ctx.arc(joystick.startX + joystick.dx, joystick.startY + joystick.dy, 20, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+  
+      ctx.save();
+      applyShake();
+  
       if (Date.now() - lastHitFlash < 200) {
         ctx.fillStyle = 'rgba(255,0,0,0.2)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
-
+  
       if (!player.invincible || Math.floor(Date.now() / 100) % 2 === 0) {
         ctx.fillStyle = 'red';
         ctx.fillRect(player.x, player.y, player.size, player.size);
       }
-
+  
       bullets.forEach(b => {
         ctx.globalAlpha = b.alpha;
         ctx.fillStyle = b.color;
@@ -207,8 +294,12 @@
         ctx.fill();
         ctx.globalAlpha = 1;
       });
+  
+      ctx.restore();
+  
+      if (isMobile && joystick) drawJoystick();
     }
-
+  
     function gameLoop() {
       const t = (Date.now() - startTime) / 1000;
       attackSchedule.forEach(e => {
@@ -217,16 +308,25 @@
           e.triggered = true;
         }
       });
-
-      update(); draw();
+  
+      update();
+      draw();
       progressBar.style.width = (t / DURATION * 100) + '%';
-      if (player.lives <= 0) return alert('Поражение!'), location.reload();
-      if (t >= DURATION) return alert('Победа!'), location.href = 'index.html';
+      if (player.lives <= 0) {
+        alert('Поражение!');
+        location.reload();
+        return;
+      }
+      if (t >= DURATION) {
+        alert('Победа!');
+        location.href = 'index.html';
+        return;
+      }
       requestAnimationFrame(gameLoop);
     }
-
+  
     document.body.addEventListener('click', () => music.play().catch(() => {}), { once: true });
     requestAnimationFrame(gameLoop);
-  </script>
+  </script>  
 </body>
 </html>

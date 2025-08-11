@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Level 5</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     html, body {
       margin: 0;
@@ -25,6 +25,7 @@
       color: white;
       font-family: monospace;
       z-index: 10;
+      text-shadow: 0 0 5px #00ffff;
     }
     #progressContainer {
       position: absolute;
@@ -35,11 +36,16 @@
       background: #444;
       border: 1px solid white;
       z-index: 10;
+      box-shadow: 0 0 10px lime;
+      border-radius: 5px;
     }
     #progressBar {
       height: 100%;
       background: lime;
       width: 0%;
+      border-radius: 5px;
+      box-shadow: 0 0 8px lime;
+      transition: width 0.1s ease-out;
     }
     #exitButton {
       position: absolute;
@@ -53,6 +59,8 @@
       border-radius: 5px;
       cursor: pointer;
       z-index: 10;
+      transition: background 0.3s ease;
+      user-select: none;
     }
     #exitButton:hover {
       background: rgba(255, 255, 255, 0.2);
@@ -79,6 +87,7 @@
       top: 30px;
       left: 30px;
       transform: translate(0, 0);
+      box-shadow: 0 0 12px cyan;
     }
     @media (hover: hover) and (pointer: fine) {
       #joystick {
@@ -259,19 +268,33 @@
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (!player.invincible || Math.floor(Date.now() / 100) % 2 === 0) {
-        ctx.fillStyle = 'white';
-        ctx.fillRect(player.x, player.y, player.size, player.size);
-      }
+
+      // Призрачный эффект игрока с плавным мерцанием
+      const alpha = 0.4 + 0.4 * Math.sin(Date.now() / 300);
+      ctx.shadowColor = 'cyan';
+      ctx.shadowBlur = 15;
+      ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`;
+      ctx.fillRect(player.x, player.y, player.size, player.size);
+      ctx.shadowBlur = 0;
+
+      // Пули с градиентом и прозрачностью
       for (let b of bullets) {
-        ctx.fillStyle = 'magenta';
+        const gradient = ctx.createRadialGradient(b.x, b.y, b.r * 0.3, b.x, b.y, b.r);
+        gradient.addColorStop(0, 'rgba(255, 0, 255, 0.9)');
+        gradient.addColorStop(1, 'rgba(255, 0, 255, 0.2)');
+        ctx.fillStyle = gradient;
         ctx.beginPath();
         ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
         ctx.fill();
       }
+
+      // Лазеры с полупрозрачным свечением
       for (let l of lasers) {
+        ctx.shadowColor = l.color;
+        ctx.shadowBlur = 12;
         ctx.fillStyle = l.color;
         ctx.fillRect(l.x, l.y, l.w, l.h);
+        ctx.shadowBlur = 0;
       }
     }
 

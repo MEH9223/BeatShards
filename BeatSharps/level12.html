@@ -76,8 +76,8 @@
   <script>
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
-    canvas.width = innerWidth;
-    canvas.height = innerHeight;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
     let bullets = [];
     const level = [];
@@ -120,7 +120,7 @@
 
     const player = {
       x: canvas.width / 2,
-      y: canvas.height / 1,
+      y: canvas.height / 1.5,
       size: 30,
       speed: 3,
       lives: 7,
@@ -130,13 +130,10 @@
     };
 
     const keys = {};
-    document.addEventListener('keydown', e => keys[e.key] = true);
-    document.addEventListener('keyup', e => keys[e.key] = false);
+    document.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+    document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
     function spawn(type) {
-      const cx = canvas.width / 2;
-      const cy = canvas.height / 2;
-
       const addBullet = (b) => {
         b.alpha = 0; // для плавного появления
         bullets.push(b);
@@ -149,7 +146,8 @@
           addBullet({
             x: x + 25, y: -20, dx: 0, dy: 6,
             r: 8, color: 'orangered',
-            spawn: Date.now(), life: 5000
+            spawn: Date.now(), life: 5000,
+            orange: true, blue: false
           });
         }
       }
@@ -168,7 +166,8 @@
             r: 8,
             color: 'orange',
             spawn: Date.now(),
-            life: 6000
+            life: 6000,
+            orange: true, blue: false
           });
         }
       }
@@ -186,7 +185,8 @@
               r: 6,
               color: 'orangered',
               spawn: Date.now(),
-              life: 5000
+              life: 5000,
+              orange: true, blue: false
             });
           }
         }
@@ -222,10 +222,16 @@
     function update() {
       let dx = joystickX || 0;
       let dy = joystickY || 0;
-      if (keys['ArrowUp'] || keys['w']) dy = -1;
-      if (keys['ArrowDown'] || keys['s']) dy = 1;
-      if (keys['ArrowLeft'] || keys['a']) dx = -1;
-      if (keys['ArrowRight'] || keys['d']) dx = 1;
+      if (keys['arrowup'] || keys['w']) dy = -1;
+      if (keys['arrowdown'] || keys['s']) dy = 1;
+      if (keys['arrowleft'] || keys['a']) dx = -1;
+      if (keys['arrowright'] || keys['d']) dx = 1;
+
+      // Нормализация скорости при движении по диагонали
+      if (dx !== 0 && dy !== 0) {
+        dx *= Math.SQRT1_2;
+        dy *= Math.SQRT1_2;
+      }
 
       player.x += dx * player.speed;
       player.y += dy * player.speed;
@@ -236,7 +242,7 @@
         b.y += b.dy;
         if (b.alpha < 1) b.alpha += 0.05;
 
-        const dist = Math.hypot(player.x - b.x, player.y - b.y);
+        const dist = Math.hypot(player.x + player.size/2 - b.x, player.y + player.size/2 - b.y);
         const moving = dx !== 0 || dy !== 0;
         if (dist < player.size && !player.invincible) {
           if ((b.orange && moving) || (b.blue && !moving) || (!b.orange && !b.blue)) {
@@ -262,6 +268,7 @@
       const t = (Date.now() - startTime) / 1000;
       if (t > DURATION * 0.66) canvas.style.background = 'radial-gradient(#400, black)';
       else if (t > DURATION * 0.33) canvas.style.background = 'radial-gradient(#222, black)';
+      else canvas.style.background = 'radial-gradient(#111, black)';
 
       if (!player.invincible || Math.floor(Date.now() / 100) % 2 === 0) {
         ctx.fillStyle = 'red';
@@ -290,8 +297,16 @@
       update();
       draw();
       progressBar.style.width = Math.min(100, (t / DURATION) * 100) + '%';
-      if (player.lives <= 0) return alert('💀 Поражение!'), location.reload();
-      if (t >= DURATION) return alert('🏆 Победа!'), location.href = 'index.html';
+      if (player.lives <= 0) {
+        alert('💀 Поражение!');
+        location.reload();
+        return;
+      }
+      if (t >= DURATION) {
+        alert('🏆 Победа!');
+        location.href = 'index.html';
+        return;
+      }
       requestAnimationFrame(gameLoop);
     }
 
@@ -301,6 +316,12 @@
 
     startTime = Date.now();
     requestAnimationFrame(gameLoop);
+
+    // Обработка ресайза окна
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
   </script>
 </body>
 </html>

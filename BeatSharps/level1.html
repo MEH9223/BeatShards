@@ -16,6 +16,7 @@
       left: 10px;
       color: white;
       font-family: monospace;
+      font-size: 20px;
       z-index: 10;
     }
     #progressContainer {
@@ -30,7 +31,7 @@
     }
     #progressBar {
       height: 100%;
-      background: lime;
+      background: crimson;
       width: 0%;
     }
     #victory {
@@ -39,8 +40,9 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      color: white;
-      font-size: 36px;
+      color: crimson;
+      font-size: 32px;
+      font-family: monospace;
       z-index: 100;
     }
     #joystick {
@@ -49,7 +51,7 @@
       right: 20px;
       width: 100px;
       height: 100px;
-      background: rgba(255,255,255,0.05);
+      background: rgba(255, 255, 255, 0.05);
       border: 2px solid white;
       border-radius: 50%;
       z-index: 10;
@@ -58,7 +60,7 @@
     #stick {
       width: 40px;
       height: 40px;
-      background: cyan;
+      background: violet;
       border-radius: 50%;
       position: absolute;
       top: 30px;
@@ -70,7 +72,12 @@
         display: none;
       }
     }
+    canvas {
+      background: radial-gradient(#111, black);
+      display: block;
+    }
   </style>
+  
 </head>
 <body>
   <div id="hpBar">Жизни: 3</div>
